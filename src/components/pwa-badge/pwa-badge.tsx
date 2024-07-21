@@ -1,6 +1,6 @@
-import './PWABadge.css'
-
 import { useRegisterSW } from 'virtual:pwa-register/react'
+
+import * as PWA from './pwa-badge.styled';
 
 /**
  * This function will register a periodic sync check every hour, you can modify the interval as needed.
@@ -31,7 +31,6 @@ function PWABadge() {
   const period = 60 * 60 * 1000
 
   const {
-    offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
@@ -51,27 +50,27 @@ function PWABadge() {
   })
 
   function close() {
-    setOfflineReady(false)
     setNeedRefresh(false)
   }
 
   return (
-    <div className="PWABadge" role="alert" aria-labelledby="toast-message">
-      { (offlineReady || needRefresh)
-      && (
-        <div className="PWABadge-toast">
-          <div className="PWABadge-message">
-            { offlineReady
-              ? <span id="toast-message">App ready to work offline</span>
-              : <span id="toast-message">New content available, click on reload button to update.</span>}
-          </div>
-          <div className="PWABadge-buttons">
-            { needRefresh && <button className="PWABadge-toast-button" onClick={() => updateServiceWorker(true)}>Reload</button> }
-            <button className="PWABadge-toast-button" onClick={() => close()}>Close</button>
-          </div>
-        </div>
+    <PWA.Container role="alert" aria-labelledby="toast-message">
+      {needRefresh && (
+        <PWA.Toast>
+          <PWA.Message>
+            <span id="toast-message">A new version is available</span>
+          </PWA.Message>
+          <PWA.ToastButtons>
+            { 
+              needRefresh && <PWA.ToastButton onClick={() => updateServiceWorker(true)}>
+                Update
+              </PWA.ToastButton> 
+            }
+            <PWA.ToastButton onClick={() => close()}>Close</PWA.ToastButton>
+          </PWA.ToastButtons>
+        </PWA.Toast>
       )}
-    </div>
+    </PWA.Container>
   )
 }
 

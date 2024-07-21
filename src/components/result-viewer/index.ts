@@ -1,1 +1,1 @@
-export { ResultViewer as default } from "./result-viewer.component"
+export { ResultViewer as default } from "./result-viewer"
