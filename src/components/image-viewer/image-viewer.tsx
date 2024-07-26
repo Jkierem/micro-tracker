@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Services } from "../services-provider/services-provider"
+import { Services } from "../services-provider/services.provider"
 import { Effect, Match, Option, Number, pipe } from "effect";
 import { renderTiff, resetImageState } from "./image-viewer.helpers";
 import { ImageState } from "./image-viewer.types";
