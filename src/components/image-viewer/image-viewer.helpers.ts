@@ -1,6 +1,6 @@
 import { Effect, Option, Number, pipe } from "effect";
 import { ImageLoader } from "../../services/image-loader.service";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Services } from "../services-provider/services.provider";
 
 export const renderTiff = (
@@ -44,18 +44,30 @@ export type ImageState = {
     url: string,
 }
 
-type HookReturn = [Option.Option<ImageState>, ImageController];
+type CanvasRef = React.RefObject<HTMLCanvasElement>
 
-export const useTiff = (canvasRef: React.RefObject<HTMLCanvasElement>): HookReturn => {
+type HookReturn = [CanvasRef, Option.Option<ImageState>, ImageController];
+
+export const useTiff = (): HookReturn => {
     const { tiffLoader } = Services.use()
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [imageState, setImageState] = useState<Option.Option<ImageState>>(Option.none);
 
-    const changeSlice = (to: number) => {
+    useEffect(() => {
+        pipe(
+            imageState,
+            Option.map(({ currentSlice, tiff }) => {
+                renderTiff(canvasRef, tiff.slices[currentSlice])
+            })
+        )
+    },[imageState])
+
+    const changeSlice = (next: (prev: number) => number) => {
         return pipe(
             imageState,
             Option.map((data) => {
                 return pipe(
-                    to,
+                    next(data.currentSlice),
                     Option.liftPredicate(Number.between({
                         minimum: 0,
                         maximum: data.tiff.slices.length - 1
@@ -89,7 +101,16 @@ export const useTiff = (canvasRef: React.RefObject<HTMLCanvasElement>): HookRetu
                 }),
             )
         },
+        next() {
+            return Effect.sync(() => changeSlice(x => x + 1))
+        },
+        prev() {
+            return Effect.sync(() => changeSlice(x => x - 1)) 
+        },
+        move(index) {
+            return Effect.sync(() => changeSlice(() => index))
+        },
     }
 
-    return [imageState, controller]
+    return [canvasRef, imageState, controller]
 }
