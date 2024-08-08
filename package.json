@@ -14,13 +14,16 @@
     "@grpc/grpc-js": "^1.11.1",
     "@grpc/proto-loader": "^0.7.13",
     "effect": "^3.5.6",
-    "grpc": "^1.24.11",
+    "google-protobuf": "^3.21.4",
+    "protoc-gen-ts": "^0.8.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "styled-components": "^6.1.12",
+    "ts-protoc-gen": "^0.15.0",
     "utif": "^3.1.0"
   },
   "devDependencies": {
+    "@types/google-protobuf": "^3.15.12",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
     "@types/utif": "^3.0.5",
