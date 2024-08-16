@@ -17,6 +17,7 @@ export declare namespace ImageLoader {
     type Shape = {
         fromURL: (url: string) => Effect.Effect<TIFF, ProcessingError | HttpError>;
         fromArrayBuffer: (data: ArrayBuffer) => Effect.Effect<TIFF, ProcessingError>;
+        fromUint8Array: (data: Uint8Array) => Effect.Effect<TIFF, ProcessingError>; 
     }
 }
 
@@ -30,6 +31,9 @@ extends Context.Tag("@services/image-processor")<
         const tiff = yield* _(TIFFAdapter);
 
         return ImageLoader.of({
+            fromUint8Array(data) {
+                return this.fromArrayBuffer(data.buffer);
+            },
             fromArrayBuffer(data) {
                 return pipe(
                     tiff.decode(data),

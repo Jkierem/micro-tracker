@@ -8,12 +8,16 @@ import React, { createContext, useContext } from "react"
 import { inject } from "../../support/effect/component"
 import { Store } from "../../adapters/store.adapter"
 import { RoutingService } from "../../services/routing.service"
+import { ImageService } from "../../services/image.service"
+import { IndexedDBAdapter } from "../../adapters/indexed-db/index-db.adapter"
+import { ImageRepo } from "../../adapters/image.repository"
 
 export declare namespace Services {
     type Shape = {
         tiffLoader: ImageLoader.Shape,
         stateService: StateService.Shape,
-        router: RoutingService.Shape
+        router: RoutingService.Shape,
+        images: ImageService.Shape,
     }
 }
 
@@ -31,12 +35,16 @@ extends Context.Tag("@providers/main")<
         tiffLoader: ImageLoader,
         stateService: StateService,
         router: RoutingService,
+        images: ImageService,
     }))
+    .pipe(Layer.provide(ImageService.Live))
+    .pipe(Layer.provide(ImageRepo.Live))
     .pipe(Layer.provide(RoutingService.Live))
     .pipe(Layer.provide(StateService.Live))
     .pipe(Layer.provide(Store.Live))
     .pipe(Layer.provide(ImageLoader.Live))
     .pipe(Layer.provide(TIFFAdapter.Live))
+    .pipe(Layer.provide(IndexedDBAdapter.Live))
     .pipe(Layer.provide(HttpAdapter.Live))
     .pipe(Layer.provide(DOMAdapter.Live))
 }

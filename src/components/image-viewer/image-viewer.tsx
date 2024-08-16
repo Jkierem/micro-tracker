@@ -1,8 +1,11 @@
 import React from "react";
-import { Effect, Match, pipe } from "effect";
+import { Effect, Match, Option, pipe } from "effect";
 import { useTiff } from "./image-viewer.helpers";
+import { Services } from "../services-provider/services.provider";
 
 export const ImageViewer = () => {
+    const { images } = Services.use();
+
     const [canvasRef, loadedImageData, tiffController] = useTiff();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -10,7 +13,7 @@ export const ImageViewer = () => {
         pipe(
             Effect.fromNullable(files),
             Effect.flatMap(files => Effect.fromNullable(files[0])),
-            Effect.flatMap(file => tiffController.load(file)),
+            Effect.flatMap(file => tiffController.upload(file)),
             Effect.runPromise
         )
     }
@@ -23,6 +26,27 @@ export const ImageViewer = () => {
     }
 
     return <div>
+        <div>
+            <button onClick={() => {
+                loadedImageData.pipe(
+                    Option.map((state) => {
+                        return new Uint8Array(state.tiff.raw);
+                    }),
+                    Option.map((data) => {
+                        images.save({
+                            data,
+                            imageName: "test-1",
+                            patientName: "test-1"
+                        }).pipe(
+                            Effect.tap((res) => {
+                                console.log("Saved file successfuly", res);
+                            }),
+                            Effect.runPromise
+                        )
+                    })
+                )
+            }}>Save</button>
+        </div>
         <div>
             <input
                 type="file"

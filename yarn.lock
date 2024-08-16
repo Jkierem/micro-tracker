@@ -991,10 +991,10 @@
   resolved "https://registry.yarnpkg.com/@canvas/image-data/-/image-data-1.0.0.tgz#3bd2cd856e13fc9e2c25feff360a4056857b0367"
   integrity sha512-BxOqI5LgsIQP1odU5KMwV9yoijleOPzHL18/YvNqF9KFSGF2K/DLlYAbDQsWqd/1nbaFuSkYD/191dpMtNh4vw==
 
-"@effect/schema@^0.68.26":
-  version "0.68.26"
-  resolved "https://registry.yarnpkg.com/@effect/schema/-/schema-0.68.26.tgz#6fd82cd7f1b4067a89149cc0b9b40a15eb7b54d4"
-  integrity sha512-o1O/ZmlHXRe9t548YrQ9sudjRWJqCtsU9KnQHzvZm5pHSc4reuZVQufCXctcR0aETf9OFOYUuETrxjEQehq/Lg==
+"@effect/schema@^0.70.4":
+  version "0.70.4"
+  resolved "https://registry.yarnpkg.com/@effect/schema/-/schema-0.70.4.tgz#53c7ebff2945a3c5e341a72c9b42c96056f8b7bd"
+  integrity sha512-iviV5abu6x3pMjg2uI2Mv5/1FpXLgkUhxJmt2lyzjKoAIED3lcntcrzJBMRbjYDOB0SJL1tYCY/Y0r2rPkC/JQ==
   dependencies:
     fast-check "^3.20.0"
 
@@ -2192,10 +2192,10 @@ doctrine@^3.0.0:
   dependencies:
     esutils "^2.0.2"
 
-effect@^3.5.6:
-  version "3.5.6"
-  resolved "https://registry.yarnpkg.com/effect/-/effect-3.5.6.tgz#e62069f44dbbf441f27d5648e222a4a69074a6b8"
-  integrity sha512-3PMiC+XMaLkHx9Nlxfr6ot/8/gVq9aEjMlBvyKzJx0p4h1ZyNEjPxvAZQ9tlxAtXBvmfRpmIwHxG99hi8qhEtQ==
+effect@^3.6.3:
+  version "3.6.3"
+  resolved "https://registry.yarnpkg.com/effect/-/effect-3.6.3.tgz#5b1828ef3a235005f67402290fc24eb2e626aaa6"
+  integrity sha512-KHD2j476/9KvmeqBN+kNNf+HwCycLqSY1jqxtVjL0P0D7SMV9FGSMBiNmFqy8BZ7kKCsCeF2sQ/8v6KxKF3Gkg==
 
 ejs@^3.1.6:
   version "3.1.10"

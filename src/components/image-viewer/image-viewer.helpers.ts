@@ -2,6 +2,7 @@ import { Effect, Option, Number, pipe } from "effect";
 import { ImageLoader } from "../../services/image-loader.service";
 import { useEffect, useRef, useState } from "react";
 import { Services } from "../services-provider/services.provider";
+import { ImageRepo } from "../../adapters/image.repository";
 
 export const renderTiff = (
     canvasRef: React.RefObject<HTMLCanvasElement>,
@@ -31,11 +32,26 @@ export const resetImageState = (state: Option.Option<ImageState>) => pipe(
     })
 );
 
+const clearCanvas = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
+    pipe(
+        Option.fromNullable(canvasRef.current),
+        Option.bindTo("canvas"),
+        Option.bind("ctx", ({ canvas }) => Option.fromNullable(canvas.getContext("2d"))),
+        Option.map(({ ctx, canvas }) => {
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            canvas.height = 0;
+            canvas.width = 0;
+        })
+    )
+}
+
 interface ImageController {
-    load: (image: File) => Effect.Effect<void>;
+    load: (image: ImageRepo.Image) => Effect.Effect<void>;
+    upload: (image: File) => Effect.Effect<void>;
     next: () => Effect.Effect<void>;
     prev: () => Effect.Effect<void>;
     move: (index: number) => Effect.Effect<void>;
+    close: () => Effect.Effect<void>;
 }
 
 export type ImageState = {
@@ -87,7 +103,21 @@ export const useTiff = (): HookReturn => {
     } 
 
     const controller: ImageController = {
-        load(image) {
+        load(image){
+            return pipe(
+                Effect.Do,
+                Effect.tap(() => setImageState(resetImageState)),
+                Effect.bind("tiff", () => tiffLoader.fromUint8Array(image.data)),
+                Effect.let("currentSlice", () => 0),
+                Effect.let("url", () => ""),
+                Effect.map(Option.some),
+                Effect.tap(a => setImageState(a)),
+                Effect.catchAll(e => {
+                    return Effect.sync(() => console.error(e))
+                }),
+            )
+        },
+        upload(image) {
             return pipe(
                 Effect.Do,
                 Effect.tap(() => setImageState(resetImageState)),
@@ -95,7 +125,7 @@ export const useTiff = (): HookReturn => {
                 Effect.bind("tiff", ({ url }) => tiffLoader.fromURL(url)),
                 Effect.let("currentSlice", () => 0),
                 Effect.map(Option.some),
-                Effect.tap(setImageState),
+                Effect.tap(a => setImageState(a)),
                 Effect.catchAll(e => {
                     return Effect.sync(() => console.error(e))
                 }),
@@ -109,6 +139,11 @@ export const useTiff = (): HookReturn => {
         },
         move(index) {
             return Effect.sync(() => changeSlice(() => index))
+        },
+        close() {
+            return Effect
+                .sync(() => setImageState(resetImageState))
+                .pipe(Effect.tap(() => clearCanvas(canvasRef)))
         },
     }
 

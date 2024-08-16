@@ -19,7 +19,7 @@ export const MainMenu = () => {
 
     return <Container>
         <RouteButton onClick={() => router.goToImageViewer()}>View Tiff</RouteButton>
-        <RouteButton disabled onClick={() => router.goToGallery()}>Browse Gallery</RouteButton>
+        <RouteButton onClick={() => router.goToGallery()}>Browse Gallery</RouteButton>
         <RouteButton disabled onClick={() => router.goToArchive()}>Browse Reports</RouteButton>
     </Container>
 }

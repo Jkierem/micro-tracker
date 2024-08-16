@@ -1,3 +1,4 @@
+import { Gallery } from "../gallery/gallery";
 import ImageViewer from "../image-viewer";
 import { MainMenu } from "../main-menu/main-menu";
 import { Services } from "../services-provider/services.provider"
@@ -13,6 +14,7 @@ export const ViewManager = () => {
             Match.value(currentView),
             Match.tag("ImageViewer", () => <ImageViewer />),
             Match.tag("MainMenu", () => <MainMenu />),
+            Match.tag("Gallery", () => <Gallery />),
             Match.orElse(() => <button onClick={() => router.goBack().pipe(Effect.runSync)}>Go Back</button>)
         )}
     </div>

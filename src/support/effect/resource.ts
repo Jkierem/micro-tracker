@@ -1,5 +1,5 @@
 import { Data, Effect, Match, Option, pipe, Resource } from 'effect';
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 
 class ResourceLoading extends Data.TaggedClass('Loading') {}
 class ResourceSuccess<T> extends Data.TaggedClass('Success')<{ data: T }> {}
@@ -111,9 +111,12 @@ export type ResourceHook<A, E, R> = (
   dependencies: unknown[],
 ) => [Resource<A, E>, Refetch<A, E>];
 
+export type FreeResourceHook<A, E> = () => [Resource<A, E>, Refetch<A, E>];
+
 export const makeResourceHook =
   <A, E, R>(resource: (args: R) => Effect.Effect<A, E>): ResourceHook<A, E, R> =>
   (args: () => Option.Option<R>, deps: unknown[]) => {
+    const ref = useRef(true);
     const [current, dispatch] = useReducer(resourceReducer<A, E>, new ResourceLoading());
 
     const fetch = useMemo(() => {
@@ -143,11 +146,19 @@ export const makeResourceHook =
     }, [args, dispatch, ...deps]);
 
     useEffect(() => {
-      fetch({ swr: false });
+      if( ref.current ){
+        ref.current = false;
+        fetch({ swr: false });
+      }
     }, [fetch]);
 
     return [current, fetch] as [Resource<A, E>, Refetch<A, E>];
   };
+
+export const makeFreeResourceHook = 
+  <A, E>(resource: () => Effect.Effect<A, E>): FreeResourceHook<A, E> => {
+    return () => makeResourceHook(resource)(() => Option.void, []);
+  }
 
 export const map =
   <A, B>(mapper: (a: A) => B) =>
