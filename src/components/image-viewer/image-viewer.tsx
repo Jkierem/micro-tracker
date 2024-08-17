@@ -36,7 +36,8 @@ export const ImageViewer = () => {
                         images.save({
                             data,
                             imageName: "test-1",
-                            patientName: "test-1"
+                            patientName: "test-1",
+                            fileType: "image/tiff"
                         }).pipe(
                             Effect.tap((res) => {
                                 console.log("Saved file successfuly", res);

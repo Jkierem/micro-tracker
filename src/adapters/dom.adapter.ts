@@ -2,7 +2,7 @@ import { Context, Effect, Layer } from "effect"
 
 export declare namespace DOMAdapter {
     type Shape = {
-        window: Effect.Effect<Window>
+        window: Effect.Effect<Window & typeof globalThis>
         document: Effect.Effect<Document>
     }
 }

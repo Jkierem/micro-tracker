@@ -20,14 +20,6 @@ export const Gallery = () => {
                     return <button
                         onClick={() => current && images
                             .update(current)
-                            .pipe(Effect.tapErrorTag("IndexedDBError", (err) => {
-                                console.log("idb", err.error);
-                                return Effect.void;
-                            }))
-                            .pipe(Effect.tapErrorTag("ParseError", (err) => {
-                                console.log(err);
-                                return Effect.void;
-                            }))
                             .pipe(Effect.tap(() => refresh({ swr: true })))
                             .pipe(Effect.runPromise)}
                     >Update</button>
@@ -47,11 +39,22 @@ export const Gallery = () => {
             {data.map(image => {
                 return <div key={image.id}>
                     ID: {image.id} ; Name: {image.imageName} ; last: {image.updatedAt.getTime()}
-                    <button onClick={() => tiffController
-                        .load(image)
-                        .pipe(Effect.tap(() => setCurrent(image)))
-                        .pipe(Effect.runPromise)
-                    }>View</button>
+                    <button onClick={() => {
+                        if( image.fileType === "image/tiff" ){
+                            tiffController
+                            .load(image)
+                            .pipe(Effect.tap(() => setCurrent(image)))
+                            .pipe(Effect.runPromise)
+                        } else {
+                            const raw = new Blob([image.data], { type: "image/png" });
+                            window.createImageBitmap(raw).then(bitmap => {
+                                canvasRef.current!.width = bitmap.width
+                                canvasRef.current!.height = bitmap.height
+                                const ctx = canvasRef.current?.getContext("2d");
+                                ctx?.drawImage(bitmap, 0, 0);
+                            })
+                        }
+                    }}>View</button>
                     <button
                         onClick={() => {
                             images

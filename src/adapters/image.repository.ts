@@ -6,6 +6,16 @@ import { Schema } from "@effect/schema";
 
 const Image = IDBValue(Schema.Struct({
     data: Schema.Uint8ArrayFromSelf,
+    fileType: Schema.Union(
+        Schema.Literal("image/png"),
+        Schema.Literal("image/apng"),
+        Schema.Literal("image/avif"),
+        Schema.Literal("image/gif"),
+        Schema.Literal("image/svg"),
+        Schema.Literal("image/jpeg"),
+        Schema.Literal("image/webp"),
+        Schema.Literal("image/tiff"),
+    ),
     imageName: Schema.String,
     patientName: Schema.String,
 }))
