@@ -1,3 +1,0 @@
-[submodule "leishmaniapp"]
-	path = leishmaniapp
-	url = git@github.com:leishmaniapp/protobuf_schema.git

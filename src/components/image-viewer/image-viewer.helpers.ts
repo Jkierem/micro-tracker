@@ -1,12 +1,12 @@
 import { Effect, Option, Number, pipe } from "effect";
-import { ImageLoader } from "../../services/image-loader.service";
+import { TIFFLoader } from "../../services/tiff-loader.service";
 import { useEffect, useRef, useState } from "react";
 import { Services } from "../services-provider/services.provider";
 import { ImageRepo } from "../../adapters/image.repository";
 
 export const renderTiff = (
     canvasRef: React.RefObject<HTMLCanvasElement>,
-    image: ImageLoader.Slice
+    image: TIFFLoader.Slice
 ) => {
     const { ifd: { width, height }, data } = image;
     pipe(
@@ -55,7 +55,7 @@ interface ImageController {
 }
 
 export type ImageState = {
-    tiff: ImageLoader.TIFF,
+    tiff: TIFFLoader.TIFF,
     currentSlice: number,
     url: string,
 }
