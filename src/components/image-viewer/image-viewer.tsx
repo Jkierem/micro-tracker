@@ -1,43 +1,62 @@
 import React from "react";
-import { Effect, Match, Option, pipe } from "effect";
-import { useTiff } from "./image-viewer.helpers";
+import { Effect, Match, Number, Option, pipe } from "effect";
 import { Services } from "../services-provider/services.provider";
 
 export const ImageViewer = () => {
-    const { images } = Services.use();
+    const { images, loader } = Services.use();
 
-    const [canvasRef, loadedImageData, tiffController] = useTiff();
+    const [canvasRef, imageState, imageController] = loader.useImageLoader();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { files } = e.target;
         pipe(
             Effect.fromNullable(files),
             Effect.flatMap(files => Effect.fromNullable(files[0])),
-            Effect.flatMap(file => tiffController.upload(file)),
+            Effect.flatMap(file => imageController.upload(file)),
+            Effect.catchTag("UnsupportedFileError", (e) => {
+                alert(`The ${e.fileType} file format is not supported`)
+                return Effect.void;
+            }),
             Effect.runPromise
         )
     }
 
     const handlePageChange = (delta: 1 | -1) => () => {
         pipe(
-            delta === 1 ? tiffController.next() : tiffController.prev(),
-            Effect.runPromise
+            imageController.update((prev) => {
+                return pipe(
+                    prev,
+                    Option.filter((state) => state.fileType === "image/tiff"),
+                    Option.map(state => {
+                        const nextValue = state.current + delta;
+                        if( Number.between({
+                            minimum: 0,
+                            maximum: state.slices.length
+                        })(nextValue)){
+                            return {
+                                ...state,
+                                current: nextValue
+                            }
+                        }
+                        return state
+                    }),
+                    res => Option.isNone(res) ? prev : res
+                )
+            })
         )
     }
 
     return <div>
         <div>
             <button onClick={() => {
-                loadedImageData.pipe(
-                    Option.map((state) => {
-                        return new Uint8Array(state.tiff.raw);
-                    }),
-                    Option.map((data) => {
+                imageState.pipe(
+                    Option.map(({ fileType, raw, dimensions }) => {
                         images.save({
-                            data,
+                            fileType,
+                            data: new Uint8Array(raw),
                             imageName: "test-1",
                             patientName: "test-1",
-                            fileType: "image/tiff"
+                            dimensions,
                         }).pipe(
                             Effect.tap((res) => {
                                 console.log("Saved file successfuly", res);
@@ -56,13 +75,16 @@ export const ImageViewer = () => {
         </div>
         {
             pipe(
-                loadedImageData,
+                imageState,
+                Option.filter((state) => {
+                    return state.fileType === "image/tiff" && state.slices.length > 1
+                }),
                 Match.value,
                 Match.tag("Some", ({ value }) => {
                     return <div>
                         <button onClick={handlePageChange(-1)}>{"<-"}</button>
                         <button onClick={handlePageChange(1)}>{"->"}</button>
-                        <p>{value.currentSlice + 1} / {value.tiff.slices.length}</p>
+                        <p>{value.current + 1} / {value.slices.length}</p>
                     </div>
                 }),
                 Match.orElse(() => <></>)

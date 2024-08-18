@@ -1,29 +1,38 @@
 import { Context, Data, Effect, Layer, Option, pipe } from "effect";
 import React, { useRef, useState } from "react";
-import { ImageRepo } from "../adapters/image.repository";
+import { FileType, ImageRepo } from "../adapters/image.repository";
 import { ProcessingError, TIFFAdapter } from "../adapters/tiff.adapter";
 import { BitmapAdapter, CanvasContextError, RenderError } from "../adapters/bitmap.adapter";
+import { FileService } from "./file.service";
+import { Schema } from "@effect/schema";
+import { HttpError } from "../adapters/http.adapter";
 
 export class NullCanvasError
 extends Data.TaggedError("NullCanvasError") {}
+
+export class UnsupportedFileError
+extends Data.TaggedError("UnsupportedFileError")<{ fileType: string }> {}
 
 export declare namespace ImageLoader {
     type CanvasError = NullCanvasError | CanvasContextError;
     type CanvasRef = React.RefObject<HTMLCanvasElement>;
     
-    type LoadError = CanvasError | ProcessingError | RenderError;
-    type ClearError = CanvasError;
-    type UpdateError = CanvasError | RenderError;
+    type ClearError  = CanvasError;
+    type UpdateError = ClearError  | RenderError;
+    type LoadError   = UpdateError | ProcessingError;
+    type UploadError = LoadError   | UnsupportedFileError | HttpError;
 
     type ImageState = Option.Option<{
-        fileType: ImageRepo.Image['fileType'],
+        dimensions: ImageRepo.Dimensions,
+        fileType: ImageRepo.FileType,
         raw: ArrayBuffer,
         current: number,
         slices: Uint8Array[]
     }>
     
     type ImageController = {
-        load: (image: ImageRepo.Image) => Effect.Effect<void,  LoadError>,
+        upload: (file: File) => Effect.Effect<void, UploadError>;
+        load: (data: Uint8Array, fileType: ImageRepo.FileType) => Effect.Effect<void, LoadError>,
         clear: () => Effect.Effect<void, ClearError>;
         update: (fn: (prev: ImageState) => ImageState) => Effect.Effect<void, UpdateError>;
     }
@@ -40,6 +49,7 @@ extends Context.Tag("@service/image-loader")<
     static Live = Layer.effect(ImageLoader, Effect.gen(function*(_){
         const tiff = yield* TIFFAdapter;
         const Bitmap = yield* BitmapAdapter; 
+        const fileService = yield* FileService;
 
         return ImageLoader.of({
             useImageLoader() {
@@ -60,29 +70,53 @@ extends Context.Tag("@service/image-loader")<
                 )
 
                 const controller: ImageLoader.ImageController = {
-                    load(image) {
+                    upload(file) {
+                        return Effect.gen(this, function*(_){
+                            const fileType = yield* _(
+                                Schema.decodeUnknown(FileType)(file.type),
+                                Effect.mapError(() => new UnsupportedFileError({ fileType: file.type }))
+                            );
+                            const buffer = yield* fileService.getArrayBuffer(file);
+                            return yield* this.load(new Uint8Array(buffer), fileType);
+                        })
+                    },
+                    load(data, fileType) {
                         return this.clear().pipe(
                             Effect.flatMap(() => {
                                 return Effect.gen(function*(_){
                                     let slices = []
-                                    if( image.fileType === "image/tiff" ){
-                                        const ifds = yield* tiff.decode(image.data.buffer);
+                                    let dimensions: ImageRepo.Dimensions;
+                                    const [canvas, ctx] = yield* CanvasContex;
+                                    if( fileType === "image/tiff" ){
+                                        const ifds = yield* tiff.decode(data.buffer);
                                         slices = yield* Effect.all(ifds.map(ifd => {
                                             return pipe(
-                                                tiff.decodeImage(image.data, ifd),
+                                                tiff.decodeImage(data, ifd),
                                                 Effect.zipRight(tiff.toRGBA8(ifd))
                                             )
                                         }))
+                                        const ifd = ifds[0];
+                                        const slice = slices[0];
+                                        dimensions = {
+                                            width: ifd.width,
+                                            height: ifd.height
+                                        }
+                                        canvas.width = ifd.width;
+                                        canvas.height = ifd.height;
+                                        const cvImage = ctx.createImageData(ifd.width, ifd.height);
+                                        cvImage.data.set(slice);
+                                        ctx.putImageData(cvImage, 0, 0);
                                     } else {
-                                        slices = [image.data];
+                                        slices = [data];
+                                        const slice = slices[0];
+                                        dimensions = yield* Bitmap.draw(slice, canvas);
                                     }
-                                    const canvas = yield* Canvas;
-                                    yield* Bitmap.draw(slices[0], canvas);
                                     setCurrent(Option.some({
+                                        dimensions,
                                         slices,
+                                        fileType,
                                         current: 0,
-                                        fileType: image.fileType,
-                                        raw: image.data.buffer,
+                                        raw: data.buffer,
                                     }))
                                 })
                             }),
@@ -104,8 +138,17 @@ extends Context.Tag("@service/image-loader")<
                                 return Effect.gen(function*(_){
                                     const state = yield* stateM;
                                     const slice = state.slices[state.current];
-                                    const canvas = yield* Canvas;
-                                    return yield* Bitmap.draw(slice, canvas);
+                                    const [canvas, ctx] = yield* CanvasContex;
+                                    if( state.fileType === "image/tiff" ){
+                                        const { width, height } = state.dimensions;
+                                        canvas.width = width;
+                                        canvas.height = height;
+                                        const cvImage = ctx.createImageData(width, height);
+                                        cvImage.data.set(slice);
+                                        ctx.putImageData(cvImage, 0, 0);
+                                    } else {
+                                        return yield* Bitmap.draw(slice, canvas);
+                                    }
                                 })
                             }),
                             Effect.catchTag("NoSuchElementException", () => Effect.void)
