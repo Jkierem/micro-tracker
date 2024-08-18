@@ -1,5 +1,6 @@
 import { Context, Data, Effect, Layer, Option } from "effect"
 import { DOMAdapter } from "./dom.adapter";
+import { ImageRepo } from "./image.repository";
 
 export class RenderError
 extends Data.TaggedError("RenderError")<{ error: unknown }> {}
@@ -12,7 +13,7 @@ export declare namespace BitmapAdapter {
         draw: (
             data: Uint8Array, 
             canvas: HTMLCanvasElement
-        ) => Effect.Effect<void, RenderError | CanvasContextError>;
+        ) => Effect.Effect<ImageRepo.Dimensions, RenderError | CanvasContextError>;
     }
 }
 export class BitmapAdapter
@@ -43,6 +44,10 @@ extends Context.Tag("BitmapAdapter")<
                         canvas.width = bitmap.width;
                         canvas.height = bitmap.height;
                         ctx.drawImage(bitmap, 0, 0);
+                        return {
+                            width: bitmap.width,
+                            height: bitmap.height
+                        }
                     }).pipe(Effect.mapError(() => new CanvasContextError()))
                 }
                 return Effect.acquireUseRelease(

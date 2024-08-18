@@ -1,85 +1,71 @@
 import { Effect, Match, Option, pipe } from "effect";
-import { Services } from "../services-provider/services.provider"
-import { useTiff } from "../image-viewer/image-viewer.helpers";
-import { useState } from "react";
+import { Services } from "../services-provider/services.provider";
 import { ImageRepo } from "../../adapters/image.repository";
+import { useOptional } from "../../support/effect/use-optional";
+import { Resource } from "../../support/effect";
 
 export const Gallery = () => {
-    const { images } = Services.use();
-    const [current, setCurrent] = useState<ImageRepo.Image | undefined>(undefined);
-    const [canvasRef, imageState, tiffController] = useTiff();
-
+    const { images, loader } = Services.use();
+    const [displayed, setDisplayed] = useOptional<ImageRepo.Image>();
+    const [canvasRef, _, imageController] = loader.useImageLoader();
     const [imagesResource, refresh] = images.useAll();
 
+    const imageList = pipe(
+        imagesResource,
+        Resource.withEmpty((images) => images.length === 0)
+    )
+
     return <>
-    <div>
-        {
-            pipe(
-                imageState,
-                Option.map(() => {
-                    return <button
-                        onClick={() => current && images
-                            .update(current)
-                            .pipe(Effect.tap(() => refresh({ swr: true })))
-                            .pipe(Effect.runPromise)}
-                    >Update</button>
-                }),
-                Option.getOrElse(() => <></>)
-            )
-        }
-    </div>
-    <div>
-        <canvas ref={canvasRef} />
-    </div>
-    <div>
-    {pipe(
-        Match.value(imagesResource),
-        Match.tag("Loading", () => <>Loading...</>),
-        Match.tag("Success", ({ data }) => <div>
-            {data.map(image => {
-                return <div key={image.id}>
-                    ID: {image.id} ; Name: {image.imageName} ; last: {image.updatedAt.getTime()}
-                    <button onClick={() => {
-                        if( image.fileType === "image/tiff" ){
-                            tiffController
-                            .load(image)
-                            .pipe(Effect.tap(() => setCurrent(image)))
-                            .pipe(Effect.runPromise)
-                        } else {
-                            const raw = new Blob([image.data], { type: "image/png" });
-                            window.createImageBitmap(raw).then(bitmap => {
-                                canvasRef.current!.width = bitmap.width
-                                canvasRef.current!.height = bitmap.height
-                                const ctx = canvasRef.current?.getContext("2d");
-                                ctx?.drawImage(bitmap, 0, 0);
-                            })
-                        }
-                    }}>View</button>
-                    <button
-                        onClick={() => {
-                            images
-                            .delete(image.id)
-                            .pipe(
-                                Effect.tap(() => {
-                                    refresh({ swr: true })
-                                    if( current && current.id === image.id ){
-                                        setCurrent(undefined);
-                                        return tiffController.close().pipe(Effect.runPromise);
-                                    }
-                                }), 
-                                Effect.runPromise
-                            )
-                        }}
-                    >Delete</button>
-                </div>
-            })}
-        </div>),
-        Match.tag("Error", ({ error }) => {
-            console.log(error)
-            return <>error</>
-        }),
-        Match.orElse(() => <></>)
-    )}
-    </div>
+        <div>
+            <canvas ref={canvasRef} />
+        </div>
+        <div>
+            {
+                pipe(
+                    Match.value(imageList),
+                    Match.tag("Empty", () => <div>-- No Saved Images --</div>),
+                    Match.tag("Error", () => <div>-- Error loading images --</div>),
+                    Match.tag("Loading", () => <div>-- Loading --</div>),
+                    Match.tag("Success", ({ data }) => {
+                        return data.map(image => {
+                            return <div key={image.id}>
+                                ID: {image.id} ; Name: {image.imageName} ; Type: {image.fileType}{` `}
+                                <button
+                                    onClick={() => {
+                                        pipe(
+                                            imageController.load(image.data, image.fileType),
+                                            Effect.tap(() => setDisplayed(image)),
+                                            Effect.runPromise
+                                        )
+                                    }}
+                                >
+                                    View
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        pipe(
+                                            images.delete(image.id),
+                                            Effect.tap(() => { refresh({ swr: true }) }),
+                                            Effect.tap(() => {
+                                                if( Option.isSome(displayed) && displayed.value.id === image.id ){
+                                                    return pipe(
+                                                        imageController.clear(),
+                                                        Effect.tap(() => setDisplayed(undefined))
+                                                    )
+                                                }
+                                                return Effect.void;
+                                            })
+                                        )
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        })
+                    }),
+                    Match.exhaustive
+                )
+            }
+        </div>
     </>
 }

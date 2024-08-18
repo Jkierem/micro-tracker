@@ -2,6 +2,7 @@ import { Context, Data, Effect, Layer, Option, pipe } from "effect";
 import { MutableRefObject, useRef } from "react";
 import { NavigatorAdapter } from "../adapters/navigator.adapter";
 import { NoSuchElementException } from "effect/Cause";
+import { ImageRepo } from "../adapters/image.repository";
 
 export class PlaybackError
 extends Data.TaggedError("PlaybackError")<{ error: unknown }> {}
@@ -13,7 +14,7 @@ export declare namespace VideoService {
     type VideoController = {
         startCapture: () => Effect.Effect<void>;
         stopCapture: () => Effect.Effect<void>;
-        takeSnapshot: () => Effect.Effect<ArrayBuffer, SerializeError | NoSuchElementException>;
+        takeSnapshot: () => Effect.Effect<[ArrayBuffer, ImageRepo.Dimensions], SerializeError | NoSuchElementException>;
     }
     type Shape={
         useVideoCapture: () => [
@@ -89,7 +90,8 @@ extends Context.Tag("VideoService")<
                                         return new SerializeError({ error })
                                     },
                                 })
-                            })
+                            }),
+                            Effect.zip(Effect.succeed({ width: 640, height: 480 }))
                         )
                     },
                 }
