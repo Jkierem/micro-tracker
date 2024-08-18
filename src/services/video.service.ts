@@ -73,6 +73,7 @@ extends Context.Tag("VideoService")<
                             Effect.bind("canvas", () => Option.fromNullable(canvasRef.current)),
                             Effect.bind("ctx", ({ canvas }) => Option.fromNullable(canvas.getContext("2d"))),
                             Effect.flatMap(({ video, canvas, ctx }) => {
+                                // TODO: Process image and get true dimensions
                                 canvas.width = 640;
                                 canvas.height = 480;
                                 ctx.drawImage(video, 0, 0, 640, 480);
@@ -91,6 +92,7 @@ extends Context.Tag("VideoService")<
                                     },
                                 })
                             }),
+                            // TODO: Process image and get true dimensions
                             Effect.zip(Effect.succeed({ width: 640, height: 480 }))
                         )
                     },
