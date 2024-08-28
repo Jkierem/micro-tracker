@@ -12,9 +12,10 @@ type LazyProps<Props> = JSX.IntrinsicAttributes &
 
 export type EffectComponent<R, Props> = Effect.Effect<React.ComponentType<Props>, never, R>;
 
-type InjectOptions = {
+type InjectOptions<E> = {
   fallback?: React.SuspenseProps['fallback'],
   displayName?: string
+  onError?: (error: E) => React.JSX.Element
 }
 
 const setDisplayName = (displayName: string) => <Props,>(comp: React.ComponentType<Props>) => {
@@ -23,14 +24,18 @@ const setDisplayName = (displayName: string) => <Props,>(comp: React.ComponentTy
 }
 
 export const inject =
-  <R,>(deps: Layer.Layer<R>, { 
+  <R, const E>(deps: Layer.Layer<R, E>, { 
     fallback = <></>,
-    displayName = "Inject"
-  }: InjectOptions = {}) =>
+    displayName = "Inject",
+    onError = (error: E) => <>Error: {JSON.stringify(error)}</>, 
+  }: InjectOptions<E> = {} as any) =>
   <Props,>(comp: EffectComponent<R, Props>) =>
     pipe(
       comp,
       Effect.provide(deps),
+      Effect.catchAll(e => {
+        return Effect.succeed(() => onError(e));
+      }),
       Effect.bindTo('default'),
       (effect) => lazy(() => Effect.runPromise(effect)),
       (Component) => ((props: LazyProps<Props>) => (
@@ -38,20 +43,24 @@ export const inject =
           <Component {...props} />
         </Suspense>
       )) as React.ComponentType<LazyProps<Props>>,
-      setDisplayName(displayName)
+      setDisplayName(displayName),
     );
 
-export const injectEffect = <R,>(
-  deps: Effect.Effect<Layer.Layer<R>>,
+export const injectEffect = <R,E>(
+  deps: Effect.Effect<Layer.Layer<R,E>>,
   {
     fallback = <></>,
-    displayName = "InjectEffect"
-  }: InjectOptions = {}
+    displayName = "InjectEffect",
+    onError = (error: E) => <>Error: {JSON.stringify(error)}</>,
+  }: InjectOptions<E> = {} as any
 ) => <Props, >(
   comp: EffectComponent<R, Props>
 ) => pipe(
   deps,
   Effect.flatMap(services => Effect.provide(comp, services)),
+  Effect.catchAll(e => {
+    return Effect.succeed(() => onError(e));
+  }),
   Effect.bindTo("default"),
   (effect) => lazy(() => Effect.runPromise(effect)),
   (Component) => ((props: LazyProps<Props>) => (

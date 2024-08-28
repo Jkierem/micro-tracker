@@ -24,7 +24,7 @@ export declare namespace Services {
         stateService: StateService.Shape,
         router: RoutingService.Shape,
         images: ImageService.Shape,
-        video: VideoService.Shape, 
+        video: VideoService.Shape,
     }
 }
 
@@ -70,5 +70,7 @@ export const ServicesProvider = pipe(
             {children}
         </ServicesContext.Provider>
     }),
-    inject(Services.Live)
+    inject(Services.Live, {
+        fallback: <>Loading...</>,
+    })
 )
