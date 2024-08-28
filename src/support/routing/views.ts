@@ -7,7 +7,8 @@ export type View = Data.TaggedEnum<{
     MainMenu: {},
     Gallery: {},
     Archive: {},
+    Test: {},
 }>
 
-const { Login, ImageViewer, Camera, MainMenu, Gallery, Archive } = Data.taggedEnum<View>();
-export const Views = { Login, ImageViewer, Camera, MainMenu, Gallery, Archive };
+const { Login, ImageViewer, Camera, MainMenu, Gallery, Archive, Test } = Data.taggedEnum<View>();
+export const Views = { Login, ImageViewer, Camera, MainMenu, Gallery, Archive, Test };
