@@ -16,10 +16,7 @@ extends Context.Tag("UrlAdapter")<
     UrlAdapter.Shape
 >(){
     static Live = Layer.effect(UrlAdapter, Effect.gen(function*(_){
-        const global = yield* _(
-            DOMAdapter,
-            Effect.flatMap(dom => dom.window)
-        );
+        const global = yield* DOMAdapter.Global
 
         const acquire = (file: File) => Effect.sync(() => global.URL.createObjectURL(file));
 

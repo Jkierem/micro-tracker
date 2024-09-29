@@ -20,10 +20,7 @@ extends Context.Tag("NavigatorAdapter")<
     NavigatorAdapter.Shape
 >(){
     static Live = Layer.effect(NavigatorAdapter, Effect.gen(function*(_){
-        const global = yield* _(
-            DOMAdapter,
-            Effect.flatMap(dom => dom.window)
-        );
+        const global = yield* DOMAdapter.Global;
 
         return NavigatorAdapter.of({
             getVideo() {

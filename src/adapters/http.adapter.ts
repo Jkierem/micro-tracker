@@ -41,10 +41,7 @@ export class HttpAdapter extends Context.Tag("@adapters/http")<
     HttpAdapter.Shape
 >(){
     static Live = Layer.effect(HttpAdapter, Effect.gen(function*(_){
-        const Window = yield* _(
-            DOMAdapter,
-            Effect.flatMap(adapter => adapter.window)
-        );
+        const Window = yield* DOMAdapter.Global
 
         return HttpAdapter.of({
             get(url) {

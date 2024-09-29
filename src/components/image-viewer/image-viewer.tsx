@@ -91,7 +91,12 @@ export const ImageViewer = () => {
             )
         }
         <div>
-            <canvas ref={canvasRef} />
+            <canvas 
+                style={{
+                    maxWidth: 700,
+                    maxHeight: 700
+                }}
+                ref={canvasRef} />
         </div>
     </div>
 }

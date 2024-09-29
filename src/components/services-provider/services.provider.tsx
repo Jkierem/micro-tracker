@@ -17,6 +17,7 @@ import { VideoService } from "../../services/video.service"
 import { inject } from "../../support/effect/component"
 import { FileService } from "../../services/file.service"
 import { UrlAdapter } from "../../adapters/url.adapter"
+import { WorkerAdapter } from "../../adapters/workers/worker.adapter"
 
 export declare namespace Services {
     type Shape = {
@@ -25,6 +26,7 @@ export declare namespace Services {
         router: RoutingService.Shape,
         images: ImageService.Shape,
         video: VideoService.Shape,
+        worker: WorkerAdapter.Shape,
     }
 }
 
@@ -44,6 +46,7 @@ extends Context.Tag("@providers/main")<
         router: RoutingService,
         images: ImageService,
         video: VideoService,
+        worker: WorkerAdapter,
     }))
     .pipe(Layer.provide(ImageLoader.Live))
     .pipe(Layer.provide(VideoService.Live))
@@ -61,6 +64,7 @@ extends Context.Tag("@providers/main")<
     .pipe(Layer.provide(HttpAdapter.Live))
     .pipe(Layer.provide(NavigatorAdapter.Live))
     .pipe(Layer.provide(DOMAdapter.Live))
+    .pipe(Layer.provide(WorkerAdapter.Live))
 }
 
 export const ServicesProvider = pipe(

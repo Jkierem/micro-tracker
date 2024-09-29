@@ -22,10 +22,7 @@ export class IndexedDBAdapter extends Context.Tag("@adapters/indexed-db")<
     IndexedDBAdapter.Shape
 >() {
     static Live = Layer.effect(IndexedDBAdapter, Effect.gen(function* (_){
-        const global = yield* _(
-            DOMAdapter,
-            Effect.flatMap(adapter => adapter.window)
-        );
+        const global = yield* DOMAdapter.Global
 
         const IDBInstanceMap = yield* _(
             Ref.make(HashMap.empty<IDBIdentity, IDBDatabase>()),

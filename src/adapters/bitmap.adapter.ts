@@ -22,7 +22,7 @@ extends Context.Tag("BitmapAdapter")<
     BitmapAdapter.Shape
 >(){
     static Live = Layer.effect(BitmapAdapter, Effect.gen(function*(_){
-        const global = yield* _(DOMAdapter, Effect.flatMap(dom => dom.window));
+        const global = yield* DOMAdapter.Global;
 
         const create = (data: Uint8Array) => {
             const blob = new Blob([data]);

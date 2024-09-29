@@ -1,9 +1,8 @@
-import { Context, Effect, Layer } from "effect"
+import { Context, Effect, Layer, pipe } from "effect"
 
 export declare namespace DOMAdapter {
     type Shape = {
-        window: Effect.Effect<Window & typeof globalThis>
-        document: Effect.Effect<Document>
+        global: Effect.Effect<typeof globalThis>
     }
 }
 
@@ -11,12 +10,15 @@ export class DOMAdapter extends Context.Tag("@adapters/dom")<
     DOMAdapter,
     DOMAdapter.Shape
 >() {
-    static Live = Layer.effect(DOMAdapter, Effect.gen(function*(_){
-        const Window = Effect.succeed(window);
-        const Document = Window.pipe(Effect.map(w => w.document));
-        return DOMAdapter.of({
-            window: Window,
-            document: Document
+    static Live = Layer.succeed(
+        DOMAdapter,  
+        DOMAdapter.of({
+            global: Effect.suspend(() => Effect.succeed(globalThis))
         })
-    }))
+    )
+
+    static Global = pipe(
+        DOMAdapter,
+        Effect.flatMap(dom => dom.global)
+    )
 }

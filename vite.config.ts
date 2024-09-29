@@ -21,10 +21,14 @@ export default defineConfig({
     },
 
     workbox: {
-      globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+      globPatterns: ['**/*'],
       cleanupOutdatedCaches: true,
       clientsClaim: true,
     },
+
+    includeAssets: [
+      "**/*",
+    ],
 
     devOptions: {
       enabled: false,

@@ -57,4 +57,12 @@ extends Context.Tag("ImageRepo")<
 
         return ImageRepo.of(fromObjectStore(imageStore, Image))
     }))
+
+    static Utils = {
+        getFilePath(file: ImageRepo.Image): string {
+            const { imageName, fileType } = file;
+            const ext = fileType.slice(fileType.indexOf("/") + 1);
+            return `${imageName}.${ext}`;
+        }
+    }
 }

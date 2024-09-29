@@ -17,10 +17,7 @@ extends Context.Tag("WebassemblyAdapter")<
     WebAssemblyAdapter.Shape
 >(){
     static Live = Layer.effect(WebAssemblyAdapter, Effect.gen(function*(_){
-        const global = yield* _(
-            DOMAdapter,
-            Effect.flatMap(dom => dom.window)
-        );
+        const global = yield* DOMAdapter.Global
         return WebAssemblyAdapter.of({
             instantiate(data) {
                 return Effect.tryPromise({
