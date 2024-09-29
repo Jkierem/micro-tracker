@@ -23,7 +23,7 @@ extends Context.Tag("@adapters/state/initial")<
     Store.Shape
 >(){
     private static onMainMenu: Store.State = {
-        view: Views.MainMenu(),
+        view: Views.Main(),
         count: 0
     }
 

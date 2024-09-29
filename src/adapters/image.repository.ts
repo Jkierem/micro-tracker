@@ -4,6 +4,18 @@ import { IndexedDBAdapter } from "./indexed-db/index-db.adapter";
 import { MicroTrackerV1 } from "./indexed-db/databases/micro-tracker-v1";
 import { Schema } from "@effect/schema";
 
+export const SupportedFileTypes = [
+    "image/png",
+    "image/apng",
+    "image/avif",
+    "image/gif",
+    "image/svg",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+    "image/tiff",
+] as const
+
 export const FileType = Schema.Union(
     Schema.Literal("image/png"),
     Schema.Literal("image/apng"),

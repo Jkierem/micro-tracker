@@ -1,25 +1,20 @@
-import { CameraViewer } from "../camera-viewer/camera-viewer";
-import { Gallery } from "../gallery/gallery";
-import ImageViewer from "../image-viewer";
-import { MainMenu } from "../main-menu/main-menu";
 import { Services } from "../services-provider/services.provider"
-import { Effect, Match, pipe } from "effect"
-import { Worker } from "../worker/worker";
+import { Match, pipe } from "effect"
+import { Main } from "../views/main/main";
+import { Capture } from "../views/capture/capture";
+import { NotFound } from "../views/not-found/not-found";
 
 export const ViewManager = () => {
     const { router } = Services.use();
 
     const currentView = router.useCurrentView();
 
-    return <div>
+    return <>
         {pipe(
             Match.value(currentView),
-            Match.tag("ImageViewer", () => <ImageViewer />),
-            Match.tag("MainMenu", () => <MainMenu />),
-            Match.tag("Gallery", () => <Gallery />),
-            Match.tag("Camera", () => <CameraViewer />),
-            Match.tag("Test", () => <Worker />),
-            Match.orElse(() => <button onClick={() => router.goBack().pipe(Effect.runSync)}>Go Back</button>)
+            Match.tag("Main", () => <Main />),
+            Match.tag("Capture", () => <Capture />),
+            Match.orElse(() => <NotFound />)
         )}
-    </div>
+    </>
 }

@@ -2,13 +2,15 @@ import { Data } from "effect";
 
 export type View = Data.TaggedEnum<{
     Login: {},
-    ImageViewer: {},
+    Main: {},
+    Capture: {},
     Camera: {},
-    MainMenu: {},
+    Visualizer: {},
     Gallery: {},
-    Archive: {},
-    Test: {},
+    Reports: {},
+    Report: {},
 }>
 
-const { Login, ImageViewer, Camera, MainMenu, Gallery, Archive, Test } = Data.taggedEnum<View>();
-export const Views = { Login, ImageViewer, Camera, MainMenu, Gallery, Archive, Test };
+const { Login, Main, Camera, Capture, Visualizer, Gallery, Reports, Report, $is } = Data.taggedEnum<View>();
+export const Views = { Login, Camera, Main, Capture, Visualizer, Gallery, Reports, Report };
+export const isView = <V extends View>(view: V) => $is(view._tag);
