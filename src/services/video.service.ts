@@ -25,6 +25,7 @@ type VideoEvent = StartVideo | StopVideo;
 
 export declare namespace VideoService {
     type VideoController = {
+        useCaptureOnMount: () => void;
         startCapture: () => Effect.Effect<void>;
         stopCapture: () => Effect.Effect<void>;
         takeSnapshot: () => Effect.Effect<[ArrayBuffer, ImageRepo.Dimensions], SerializeError | NoSuchElementException>;
@@ -128,6 +129,14 @@ extends Context.Tag("VideoService")<
                 },[])
 
                 const controller: VideoService.VideoController = {
+                    useCaptureOnMount() {
+                        useEffect(() => {
+                            this.startCapture().pipe(Effect.runPromise);
+                            return () => {
+                                this.stopCapture().pipe(Effect.runPromise);
+                            }
+                        },[])
+                    },
                     startCapture(){
                         return requests.offer(new StartVideo({ canvasRef, videoRef }));
                     },

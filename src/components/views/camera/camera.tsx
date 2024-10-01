@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Services } from "../../services-provider/services.provider"
 import { Action, ViewBase } from "../../view-base/view-base"
 import { Data, Effect, Match, Option, pipe } from "effect";
@@ -29,6 +29,8 @@ export const Camera = () => {
     const [fileInfo, setFileInfo] = useState<FileInfo>({});
 
     const [videoRef, canvasRef, controller] = video.useVideoCapture();
+
+    controller.useCaptureOnMount();
 
     const handleCapture = () => {
         pipe(
@@ -103,13 +105,6 @@ export const Camera = () => {
             Effect.runPromise
         )
     }
-    
-    useEffect(() => {
-        controller.startCapture().pipe(Effect.runPromise);
-        return () => {
-            controller.stopCapture().pipe(Effect.runPromise);
-        }
-    },[])
 
     const handleAction = (action: Action) => {
         switch(action){
