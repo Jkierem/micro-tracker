@@ -3,7 +3,7 @@ import styled from "styled-components"
 import { ZLayer } from "../../support/style/z-layer"
 import { Services } from "../services-provider/services.provider";
 import { Effect } from "effect";
-import { Icon } from "../icon/icon";
+import { Icon, IconName } from "../icon/icon";
 import { isView, Views } from "../../support/routing/views";
 
 const navitemHeight = `min(200px, 10vh)`;
@@ -65,12 +65,50 @@ const NavBar = styled.nav`
     }
 `
 
-export type Action = 
- | "menu"
- | "close"
- | "delete";
+export type Action = IconName;
 
-interface Props {
+type BaseProps = {
+    left?: Action,
+    center?: Action,
+    right?: Action,
+    onAction?: (action: Action) => void,
+    children?: React.ReactNode
+}
+
+const Template = ({
+    left,
+    center,
+    right,
+    onAction,
+    children
+}: BaseProps) => {
+    const handleAction = (action?: Action) => () => {
+        if( action ){
+            onAction?.(action);
+        }
+    }
+
+    return <BaseContainer>
+        <NavBarContainer>
+            <NavBar>
+                {[left, center, right].map((action, actionIndex) => {
+                    return <NavItem 
+                        key={`action-${actionIndex}`} 
+                        $hidden={!action} 
+                        onClick={handleAction(action)}
+                    >
+                        {action && <Icon name={action} />}
+                    </NavItem>
+                })}
+            </NavBar>
+        </NavBarContainer>
+        <Content>
+            {children}
+        </Content>
+    </BaseContainer>
+}
+ 
+interface DefaultProps {
     children?: React.ReactNode,
     action?: Action,
     onAction?: (action: Action) => void,
@@ -84,7 +122,7 @@ export const ViewBase = ({
     onAction,
     onBack,
     onHome
-}: Props) => {
+}: DefaultProps) => {
     const { router } = Services.use();
 
     const current = router.useCurrentView();
@@ -101,28 +139,29 @@ export const ViewBase = ({
         onBack?.();
     }
 
-    const handleAction = () => {
-        if( action ){
-            onAction?.(action);
+    const handleAction = (act: Action) => {
+        switch(act){
+            case "home":
+                return handleHome();
+            case "back":
+                return handleBack();
+            default:
+                onAction?.(act);
         }
     }
 
-    return <BaseContainer>
-        <NavBarContainer>
-            <NavBar>
-                <NavItem $hidden={isMain}onClick={handleBack}>
-                    <Icon name="left-arrow" />
-                </NavItem>
-                <NavItem $hidden={isMain}onClick={handleHome}>
-                    <Icon name="home"/>
-                </NavItem>
-                <NavItem $hidden={isMain || !Boolean(action)} onClick={handleAction}>
-                    {action && <Icon name={action}/>}
-                </NavItem>
-            </NavBar>
-        </NavBarContainer>
-        <Content>
-            {children}
-        </Content>
-    </BaseContainer>
+    const actions = {
+        left: isMain ? undefined : "back",
+        center: isMain ? undefined : "home",
+        right: isMain ? undefined : action
+    } as const
+
+    return <Template
+        {...actions}
+        onAction={handleAction}
+    >
+        {children}
+    </Template>
 }
+
+ViewBase.Custom = Template;

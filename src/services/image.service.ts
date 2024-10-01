@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Duration, Effect, Layer } from "effect";
 import { ImageRepo } from "../adapters/image.repository";
 import { FreeResourceHook, makeFreeResourceHook } from "../support/effect/resource";
 
@@ -26,7 +26,7 @@ extends Context.Tag("ImageService")<
             save: repo.create,
             update: repo.update,
             delete: repo.delete,
-            useAll: makeFreeResourceHook(() => repo.readAll()),
+            useAll: makeFreeResourceHook(() => repo.readAll().pipe(Effect.delay(Duration.seconds(2)))),
         })
     }))
 }

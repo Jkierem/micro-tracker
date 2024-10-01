@@ -1,5 +1,5 @@
-import { Context, Data, Effect, Layer, Option, pipe } from "effect";
-import { MutableRefObject, useRef } from "react";
+import { Context, Data, Effect, Fiber, Layer, Option, pipe, Queue, Ref, Schedule } from "effect";
+import { MutableRefObject, useEffect, useRef } from "react";
 import { NavigatorAdapter } from "../adapters/navigator.adapter";
 import { NoSuchElementException } from "effect/Cause";
 import { ImageRepo } from "../adapters/image.repository";
@@ -9,6 +9,19 @@ extends Data.TaggedError("PlaybackError")<{ error: unknown }> {}
 
 export class SerializeError
 extends Data.TaggedError("SerializeError")<{ error: unknown }> {}
+
+export class StartVideo
+extends Data.TaggedClass("StartVideo")<{
+    videoRef: React.RefObject<HTMLVideoElement>,
+    canvasRef: React.RefObject<HTMLCanvasElement>,
+}> {}
+
+export class StopVideo
+extends Data.TaggedClass("StopVideo")<{
+    videoRef: React.RefObject<HTMLVideoElement>,
+}> {}
+
+type VideoEvent = StartVideo | StopVideo;
 
 export declare namespace VideoService {
     type VideoController = {
@@ -31,40 +44,95 @@ extends Context.Tag("VideoService")<
 >(){
     static Live = Layer.effect(VideoService, Effect.gen(function*(_){
         const media = yield* NavigatorAdapter;
+        const capturing = yield* Ref.make(false);
+        const requests = yield* Queue.unbounded<VideoEvent>();
+        let currentFrame: undefined | number;
+
+        const startEvent = ({ canvasRef, videoRef }: StartVideo) => Effect.gen(function*(_){
+            const video = yield* (Option.fromNullable(videoRef.current));
+            const stream = yield* media.getVideo();
+            video.srcObject = stream;
+            yield* Effect.async((resume) => {
+                video.addEventListener("canplay", () => {
+                    resume(Effect.void);
+                },{ once: true });
+            })
+            yield* Ref.set(capturing, true);
+            yield* Effect.tryPromise({
+                try: () => video.play(),
+                catch: error => {
+                    console.error(error);
+                    return new PlaybackError({ error })
+                }
+            })
+
+            const canvas = yield* Option.fromNullable(canvasRef.current);
+            const ctx = yield* Option.fromNullable(canvas.getContext("2d"))
+            const paint = () => {
+                ctx.drawImage(
+                    video, 
+                    0, 0, video.videoWidth, video.videoHeight, 
+                    0, 0, canvas.width, canvas.height
+                );
+                if( capturing ){
+                    currentFrame = requestAnimationFrame(paint)
+                }
+            }
+            currentFrame = requestAnimationFrame(paint);
+        }).pipe(
+            Effect.unlessEffect(capturing.get),
+            Effect.catchAll(e => {
+                return Effect.logError(e)
+            })
+        )
+
+        const stopEvent = ({ videoRef }: StopVideo) =>  Effect.gen(function*(_){
+            const video = yield* Option.fromNullable(videoRef.current);
+            const stream = video.srcObject as MediaStream | null;
+            if( stream ){
+                stream.getVideoTracks().forEach(track => {
+                    stream.removeTrack(track);
+                    track.stop();
+                });
+            }
+            video.srcObject = null;
+            
+            if( currentFrame !== undefined ){
+                cancelAnimationFrame(currentFrame);
+            }
+            yield* Ref.set(capturing, false);
+        }).pipe(
+            Effect.whenEffect(capturing.get),
+            Effect.ignore
+        );
+
+        const startListener = Effect.gen(function*(){
+            const event = yield* Queue.take(requests);
+            switch(event._tag){
+                case "StartVideo":
+                    return yield* startEvent(event);
+                case "StopVideo":
+                    return yield* stopEvent(event)
+            }
+        }).pipe(Effect.repeat(Schedule.forever))
         
         return VideoService.of({
             useVideoCapture() {
                 const videoRef = useRef<HTMLVideoElement>(null);
                 const canvasRef = useRef<HTMLCanvasElement>(null);
+                useEffect(() => {
+                    const fiber = startListener.pipe(Effect.runFork)
+                    return () => {
+                        Effect.runFork(Fiber.interrupt(fiber));
+                    }
+                },[])
 
                 const controller: VideoService.VideoController = {
                     startCapture(){
-                        return Effect.gen(function*(_){
-                            const video = yield* (Option.fromNullable(videoRef.current));
-                            const stream = yield* media.getVideo();
-
-                            video.srcObject = stream;
-                            return yield* Effect.tryPromise({
-                                try: () => video.play(),
-                                catch: error => new PlaybackError({ error })
-                            })
-                        }).pipe(Effect.catchAll(e => Effect.logError(e)))
+                        return requests.offer(new StartVideo({ canvasRef, videoRef }));
                     },
                     stopCapture() {
-                        return pipe(
-                            Option.fromNullable(videoRef.current),
-                            Effect.map(video => {
-                                const stream = video.srcObject as MediaStream | null;
-                                if( stream ){
-                                    stream.getVideoTracks().forEach(track => {
-                                        stream.removeTrack(track);
-                                        track.stop();
-                                    });
-                                }
-                                video.srcObject = null;
-                            }),
-                            Effect.ignore,
-                        )
+                        return requests.offer(new StopVideo({ videoRef }));
                     },
                     takeSnapshot() {
                         return pipe(
@@ -73,27 +141,32 @@ extends Context.Tag("VideoService")<
                             Effect.bind("canvas", () => Option.fromNullable(canvasRef.current)),
                             Effect.bind("ctx", ({ canvas }) => Option.fromNullable(canvas.getContext("2d"))),
                             Effect.flatMap(({ video, canvas, ctx }) => {
-                                // TODO: Process image and get true dimensions
-                                canvas.width = 640;
-                                canvas.height = 480;
-                                ctx.drawImage(video, 0, 0, 640, 480);
-                                return Effect.tryPromise({
-                                    try: () => new Promise<Blob>((res, rej) => canvas.toBlob((blob) => blob ? res(blob) : rej(blob), "image/png")),
-                                    catch(error) {
-                                        return new SerializeError({ error });
-                                    },
+                                return Effect.gen(function*(){
+                                    ctx.drawImage(
+                                        video, 
+                                        0, 0, video.videoWidth, video.videoHeight, 
+                                        0, 0, canvas.width, canvas.height
+                                    );
+                                    const blob = yield* Effect.tryPromise({
+                                        try: () => new Promise<Blob>((res, rej) => canvas.toBlob((blob) => blob ? res(blob) : rej(blob), "image/png")),
+                                        catch(error) {
+                                            return new SerializeError({ error });
+                                        },
+                                    })
+
+                                    const buffer = yield* Effect.tryPromise({
+                                        try: () => blob.arrayBuffer(),
+                                        catch(error) {
+                                            return new SerializeError({ error })
+                                        },
+                                    })
+
+                                    return [buffer, {
+                                        width: video.videoWidth,
+                                        height: video.videoHeight,
+                                    }] as const
                                 })
                             }),
-                            Effect.flatMap(blob => {
-                                return Effect.tryPromise({
-                                    try: () => blob.arrayBuffer(),
-                                    catch(error) {
-                                        return new SerializeError({ error })
-                                    },
-                                })
-                            }),
-                            // TODO: Process image and get true dimensions
-                            Effect.zip(Effect.succeed({ width: 640, height: 480 }))
                         )
                     },
                 }

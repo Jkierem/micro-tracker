@@ -16,6 +16,7 @@ const Icons = {
     document,
     reports: document,
     home,
+    back: leftArrow,
     "left-arrow": leftArrow,
     close,
     "small-x": close,

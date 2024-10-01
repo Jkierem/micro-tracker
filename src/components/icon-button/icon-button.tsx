@@ -11,7 +11,6 @@ const Container = styled.button`
     justify-content: space-between;
     align-items: center;
     background: none;
-    border-radius: 45deg;
     border: 1px solid #000000;
     border-radius: 8px;
 `
