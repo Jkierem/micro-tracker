@@ -4,7 +4,7 @@ import { Main } from "../views/main/main";
 import { Capture } from "../views/capture/capture";
 import { NotFound } from "../views/not-found/not-found";
 import { Camera } from "../views/camera/camera";
-import { Gallery } from "../gallery/gallery.old";
+import { Gallery } from "../gallery/gallery";
 
 export const ViewManager = () => {
     const { router } = Services.use();
