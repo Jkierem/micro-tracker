@@ -11,6 +11,10 @@ extends Data.TaggedError("CanvasContextError") {}
 
 export declare namespace BitmapAdapter {
     type Shape = {
+        prepareSnapshot: (
+            data: Uint8Array | ImageData, 
+            canvas: HTMLCanvasElement | OffscreenCanvas
+        ) => Effect.Effect<ImageRepo.Dimensions, RenderError | CanvasContextError>;
         draw: (
             data: Uint8Array | ImageData, 
             canvas: HTMLCanvasElement
@@ -44,15 +48,30 @@ extends Context.Tag("BitmapAdapter")<
         const close = (bitmap: ImageBitmap) => Effect.sync(() => bitmap.close());
 
         return BitmapAdapter.of({
+            prepareSnapshot(data, canvas) {
+                const usingBitmap = (bitmap: ImageBitmap) => {
+                    return Effect.gen(function*(_){
+                        const ctx = yield* Option.fromNullable(canvas.getContext("2d"));
+
+                        CanvasUtilities.paint(canvas, ctx, bitmap);
+                        return {
+                            width: bitmap.width,
+                            height: bitmap.height
+                        }
+                    }).pipe(Effect.mapError(() => new CanvasContextError()))
+                }
+                return Effect.acquireUseRelease(
+                    create(data),
+                    usingBitmap,
+                    close
+                )
+            },
             draw(data, canvas) {
                 const usingBitmap = (bitmap: ImageBitmap) => {
                     return Effect.gen(function*(_){
                         const ctx = yield* Option.fromNullable(canvas.getContext("2d"));
 
                         CanvasUtilities.paintWithAspectRatio(canvas, ctx, bitmap);
-                        // canvas.width = bitmap.width;
-                        // canvas.height = bitmap.height;
-                        // ctx.drawImage(bitmap, 0, 0);
                         return {
                             width: bitmap.width,
                             height: bitmap.height

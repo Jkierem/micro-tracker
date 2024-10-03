@@ -1,11 +1,13 @@
 import { Context, Data, Effect, Layer, Option, pipe } from "effect";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FileType, ImageRepo } from "../adapters/image.repository";
 import { ProcessingError, TIFFAdapter } from "../adapters/tiff.adapter";
 import { BitmapAdapter, CanvasContextError, RenderError } from "../adapters/bitmap.adapter";
 import { FileService } from "./file.service";
 import { Schema } from "@effect/schema";
 import { HttpError } from "../adapters/http.adapter";
+import { SerializeError, VideoService } from "./video.service";
+import { NoSuchElementException } from "effect/Cause";
 
 export class NullCanvasError
 extends Data.TaggedError("NullCanvasError") {}
@@ -36,11 +38,8 @@ export declare namespace ImageLoader {
     type UpdateError = ClearError  | RenderError;
     type LoadError   = UpdateError | ProcessingError;
     type VerifyError = UnsupportedFileError | HttpError;
-
-    type FileContainer = {
-        data: Uint8Array,
-        type: ImageRepo.FileType
-    }
+    type SnapshotError = NoSuchElementException | CanvasContextError | RenderError | SerializeError
+    type Snapshot = VideoService.Snapshot;
 
     type ImageState = Option.Option<{
         dimensions: ImageRepo.Dimensions,
@@ -54,6 +53,8 @@ export declare namespace ImageLoader {
         render: (file: FileContainer) => Effect.Effect<void, LoadError>,
         clear: () => Effect.Effect<void, ClearError>;
         update: (fn: (prev: ImageState) => ImageState) => Effect.Effect<void, UpdateError>;
+        takeSnapshot: () => Effect.Effect<Snapshot, SnapshotError>;
+        useRenderOnMount: (file: FileContainer) => void;
     }
 
     type Shape = {
@@ -168,6 +169,47 @@ extends Context.Tag("@service/image-loader")<
                             }),
                             Effect.catchTag("NoSuchElementException", () => Effect.void)
                         )
+                    },
+                    takeSnapshot() {
+                        return Effect.gen(function*(){
+                            const canvas = new OffscreenCanvas(100,100);
+                            const ctx = yield* Option.fromNullable(canvas.getContext("2d"));
+                            const state = yield* current;
+                            const slice = state.slices[state.current];
+                            let media: Uint8Array | ImageData;
+                            if( state.fileType === "image/tiff" ){
+                                const { width, height } = state.dimensions;
+                                const cvImage = ctx.createImageData(width, height);
+                                cvImage.data.set(slice);
+                                media = cvImage;
+                            } else {
+                                media = slice;
+                            }
+                            yield* Bitmap.prepareSnapshot(media, canvas);
+                            const blob = yield* Effect.tryPromise({
+                                try: () => canvas.convertToBlob({ type: "image/png" }),
+                                catch(error) {
+                                    return new SerializeError({ error });
+                                },
+                            })
+
+                            const buffer = yield* Effect.tryPromise({
+                                try: () => blob.arrayBuffer(),
+                                catch(error) {
+                                    return new SerializeError({ error })
+                                },
+                            })
+
+                            return [buffer, state.dimensions];
+                        })
+                    },
+                    useRenderOnMount(file) {
+                        useEffect(() => {
+                            this.render(file)
+                            .pipe(
+                                Effect.runPromise
+                            )
+                        },[])
                     },
                 }
                 

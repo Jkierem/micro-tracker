@@ -1,1 +1,0 @@
-export { ResultViewer as default } from "./result-viewer"

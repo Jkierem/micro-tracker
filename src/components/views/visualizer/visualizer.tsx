@@ -1,19 +1,13 @@
-import { useEffect } from "react";
-import { ImageLoader } from "../../../services/image-loader.service";
-import { Services } from "../../services-provider/services.provider"
-import { ViewBase } from "../../view-base/view-base";
-import { Effect } from "effect";
+import { CommonVisualizer } from "./common-visualizer";
+import { VisualizerData } from "../../../support/routing/views";
+import { Match, pipe } from "effect";
+import { FileVisualizer } from "./file-visualizer";
 
-export const Visualizer = ({ file }: { file: ImageLoader.FileContainer }) => {
-    const { loader } = Services.use();
-
-    const [canvasRef, _, imageController] = loader.useImageRenderer()
-
-    useEffect(() => {
-        imageController.render(file).pipe(Effect.runPromise);
-    }, [])
-
-    return <ViewBase action="menu">
-        <canvas ref={canvasRef} style={{ height: "100%", width: "100%" }} />
-    </ViewBase>
+export const Visualizer = ({ data }: { data: VisualizerData }) => {
+    return pipe(
+        Match.value(data),
+        Match.tag("File", ({ file }) => <FileVisualizer file={file} />),
+        Match.tag("Image", ({ image }) => <CommonVisualizer image={image} />),
+        Match.exhaustive
+    )
 }

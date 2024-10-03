@@ -43,8 +43,8 @@ function calculateSize(srcSize: Size, dstSize: Size) {
 
 export class CanvasUtilities {
     public static paint (
-        canvas: HTMLCanvasElement,
-        context: CanvasRenderingContext2D,
+        canvas: HTMLCanvasElement | OffscreenCanvas,
+        context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
         resource: HTMLVideoElement | ImageBitmap
     ) {
         const media = MediaElement.make(resource);

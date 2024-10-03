@@ -25,11 +25,13 @@ extends Data.TaggedClass("StopVideo")<{
 type VideoEvent = StartVideo | StopVideo;
 
 export declare namespace VideoService {
+    type Snapshot = [ArrayBuffer, ImageRepo.Dimensions]
+
     type VideoController = {
         useCaptureOnMount: () => void;
         startCapture: () => Effect.Effect<void>;
         stopCapture: () => Effect.Effect<void>;
-        takeSnapshot: () => Effect.Effect<[ArrayBuffer, ImageRepo.Dimensions], SerializeError | NoSuchElementException>;
+        takeSnapshot: () => Effect.Effect<Snapshot, SerializeError | NoSuchElementException>;
     }
     type Shape={
         useVideoCapture: () => [
@@ -145,13 +147,13 @@ extends Context.Tag("VideoService")<
                         return pipe(
                             Effect.Do,
                             Effect.bind("video", () => Option.fromNullable(videoRef.current)),
-                            Effect.bind("canvas", () => Option.fromNullable(canvasRef.current)),
+                            Effect.bind("canvas", () => Option.fromNullable(new OffscreenCanvas(100,100))),
                             Effect.bind("ctx", ({ canvas }) => Option.fromNullable(canvas.getContext("2d"))),
                             Effect.flatMap(({ video, canvas, ctx }) => {
                                 return Effect.gen(function*(){
                                     CanvasUtilities.paint(canvas, ctx, video);
                                     const blob = yield* Effect.tryPromise({
-                                        try: () => new Promise<Blob>((res, rej) => canvas.toBlob((blob) => blob ? res(blob) : rej(blob), "image/png")),
+                                        try: () => canvas.convertToBlob({ type: "image/png" }),
                                         catch(error) {
                                             return new SerializeError({ error });
                                         },
@@ -163,7 +165,6 @@ extends Context.Tag("VideoService")<
                                             return new SerializeError({ error })
                                         },
                                     })
-                                    CanvasUtilities.paintWithAspectRatio(canvas, ctx, video);
 
                                     return [buffer, {
                                         width: video.videoWidth,

@@ -1,12 +1,21 @@
 import { Data } from "effect";
-import { ImageLoader } from "../../services/image-loader.service";
+import { FileContainer } from "../../services/image-loader.service";
+import { ImageRepo } from "../../adapters/image.repository";
+
+export type VisualizerData = Data.TaggedEnum<{
+    File: { file: FileContainer },
+    Image: { image: ImageRepo.Image }
+}>
+
+const { File, Image } = Data.taggedEnum<VisualizerData>();
+export const VisualizerDataTypes = { File, Image }
 
 export type View = Data.TaggedEnum<{
     Login: {},
     Main: {},
     Capture: {},
     Camera: {},
-    Visualizer: { readonly file: ImageLoader.FileContainer },
+    Visualizer: { data: VisualizerData },
     Gallery: {},
     Reports: {},
     Report: {},

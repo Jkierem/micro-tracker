@@ -54,7 +54,7 @@ const ButtonStyle = styled.button<styledProps>`
 interface ButtonProps {
     variant: ButtonVariant
     color: ButtonColor;
-    onClick: () => void;
+    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
     children?: React.ReactNode
 }
 
@@ -70,6 +70,10 @@ export const Button = ({
         onClick={onClick}
         children={children}
     />
+}
+
+export declare namespace Button {
+    type Event = React.MouseEvent<HTMLButtonElement>;
 }
 
 Button.Primary = (props: Omit<ButtonProps, "variant">) => <Button {...props} variant="primary"/>

@@ -3,11 +3,11 @@ import { Services } from "../../services-provider/services.provider"
 import { ViewBase } from "../../view-base/view-base"
 import { Effect, Match, Option, pipe } from "effect";
 import { Resource } from "../../../support/effect";
-import { Modal } from "../../modal/modal";
 import { useOptional } from "../../../support/effect/use-optional";
 import { ImageRepo } from "../../../adapters/image.repository";
-import { Button } from "../../button/button";
-import { FileContainer } from "../../../services/image-loader.service";
+import { VisualizerDataTypes } from "../../../support/routing/views";
+import { DeleteImageModal } from "../../delete-image-modal/delete-image-modal";
+import { Icon } from "../../icon/icon";
 
 const Content = styled.div`
     width: 100%;
@@ -59,6 +59,11 @@ const Row = styled.div`
     font-size: 14px;
     margin-bottom: 12px;
     box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+
+    & img {
+        max-height: 100%;
+        box-sizing: border-box;
+    }
 `
 
 export const Gallery = () => {
@@ -72,14 +77,11 @@ export const Gallery = () => {
     )
 
     const handleOpenImage = (image: ImageRepo.Image) => () => {
-        router.goToVisualizer({ file: FileContainer.fromImage(image) });
+        router.goToVisualizer({ data: VisualizerDataTypes.Image({ image }) });
     }
 
     const handleDelete = () => {
         Effect.gen(function*(_){
-            const image = yield* imageToDelete;
-            yield* images.delete(image.id);
-
             refresh().pipe(
                 Option.map(p => {
                     p.catch(e => console.error("Issue refetching", e))
@@ -95,34 +97,11 @@ export const Gallery = () => {
     }
 
     return <ViewBase>
-        <Modal open={Option.isSome(imageToDelete)}>
-            <h1>
-                Estas a punto de borrar {
-                    imageToDelete.pipe(
-                        Option.map(image => image.imageName),
-                        Option.getOrElse(() => "")
-                    )
-                }
-                </h1>
-                <div
-                    style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        justifyContent: "space-around",
-                        alignItems: "center",
-                        marginTop: "10px"
-                    }}
-                >
-                    <Button.Primary 
-                        color="red"
-                        onClick={() => setImageToDelete()}
-                    >Cancel</Button.Primary>
-                    <Button.Secondary 
-                        color="red"
-                        onClick={handleDelete}
-                    >Borrar</Button.Secondary>
-                </div>
-        </Modal>
+        <DeleteImageModal
+            imageToDelete={imageToDelete}
+            onCancel={() => setImageToDelete()}
+            onDelete={handleDelete}
+        />
         <Content>
             {pipe(
                 Match.value(imageList),
@@ -135,7 +114,18 @@ export const Gallery = () => {
                             <div>{image.imageName}</div>
                             <div>{image.patientName}</div>
                             <div>{image.updatedAt.toISOString()}</div>
-                            <div onClick={() => setImageToDelete(image)}>X</div>
+                            <div 
+                                style={{
+                                    height: "90%",
+                                    width: ""
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setImageToDelete(image);
+                                }}
+                            >
+                                <Icon name="close" />
+                            </div>
                         </Row>
                     })
                 }),

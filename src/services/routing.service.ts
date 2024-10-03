@@ -14,10 +14,13 @@ export declare namespace RoutingService {
     type Shape = {
         useCurrentView: () => View;
         goBack: () => Effect.Effect<void>;
-        goTo: (next: View) => Effect.Effect<void>; 
+        goTo: (next: View) => Effect.Effect<void>;
+        replaceTo: (next: View) => Effect.Effect<void>;
     } 
     & { [P in View['_tag'] as `goTo${P}`]: (...args: RouteArgs<P>) => void}
     & { [P in View['_tag'] as `goTo${P}Effect`]: (...args: RouteArgs<P>) => Effect.Effect<void> }
+    & { [P in View['_tag'] as `replaceTo${P}`]: (...args: RouteArgs<P>) => void}
+    & { [P in View['_tag'] as `replaceTo${P}Effect`]: (...args: RouteArgs<P>) => Effect.Effect<void> }
 
 }
 
@@ -58,7 +61,7 @@ extends Context.Tag("@service/routing")<
                                 )
                             })
                         )
-                    }
+                    },
                 }
             })
         )
@@ -71,11 +74,24 @@ extends Context.Tag("@service/routing")<
                 },
                 [`goTo${view}Effect`](args: any){
                     return history.push(Views[view](args));
-                }
+                },
+                [`replaceTo${view}`](args: any){
+                    return history.pop().pipe(
+                        Effect.zipRight(history.push(Views[view](args))),
+                        Effect.runSync
+                    );
+                },
+                [`replaceTo${view}Effect`](args: any){
+                    return history.pop().pipe(
+                        Effect.zipRight(history.push(Views[view](args))),
+                    );
+                },
             }
         }, {} as 
             { [P in View['_tag'] as `goTo${P}`]: () => void }
             & { [P in View['_tag'] as `goTo${P}Effect`]: () => Effect.Effect<void> }
+            & { [P in View['_tag'] as `replaceTo${P}`]: () => void }
+            & { [P in View['_tag'] as `replaceTo${P}Effect`]: () => Effect.Effect<void> }
         )
 
         return RoutingService.of({
@@ -87,6 +103,9 @@ extends Context.Tag("@service/routing")<
             },
             goTo(view) {
                 return history.push(view)
+            },
+            replaceTo(next) {
+                return history.pop().pipe(Effect.zipRight(history.push(next)));
             },
             ...dynamics,
         })

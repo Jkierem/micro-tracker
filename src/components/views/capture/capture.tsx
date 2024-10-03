@@ -6,6 +6,7 @@ import { SupportedFileTypes } from "../../../adapters/image.repository";
 import { Modal } from "../../modal/modal";
 import { Effect } from "effect";
 import { Button } from "../../button/button";
+import { VisualizerDataTypes } from "../../../support/routing/views";
 
 export const Capture = () => {
     const { router, loader } = Services.use();
@@ -27,7 +28,7 @@ export const Capture = () => {
         if( e.target.files?.[0] ){
             loader.verifyFile(e.target.files[0]).pipe(
                 Effect.flatMap(file => {
-                    return router.goToVisualizerEffect({ file })
+                    return router.goToVisualizerEffect({ data: VisualizerDataTypes.File({ file }) })
                 }),
                 Effect.catchTag("UnsupportedFileError", (e) => {
                     setError(`Archivos ${e.fileType} no son soportados`);

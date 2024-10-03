@@ -1,32 +1,23 @@
 import { useState } from "react";
 import { Services } from "../../services-provider/services.provider"
 import { Action, ViewBase } from "../../view-base/view-base"
-import { Data, Effect, Match, Option, pipe } from "effect";
-import { ImageRepo } from "../../../adapters/image.repository";
+import { Data, Effect, Match, pipe } from "effect";
 import { useOptional } from "../../../support/effect/use-optional";
-import { Modal } from "../../modal/modal";
-import { Button } from "../../button/button";
-import { Input } from "../../input/input";
-
-type SnapshotData = [ArrayBuffer, ImageRepo.Dimensions]
+import { SaveSnapshotModal } from "../../save-snapshot-modal/save-snapshot-modal";
+import { VideoService } from "../../../services/video.service";
 
 type CameraState = Data.TaggedEnum<{
-    Snapshot: { snap: SnapshotData },
+    Snapshot: { snap: VideoService.Snapshot },
     Capture: {}
 }>
 
 const { Snapshot, Capture } = Data.taggedEnum<CameraState>();
 
-type FileInfo = {
-    imageName?: string,
-    patientName?: string,
-}
 
 export const Camera = () => {
-    const { video, router, images } = Services.use();
+    const { video, router } = Services.use();
     const [state, setState] = useState<CameraState>(Capture());
-    const [candidate, setCandidate] = useOptional<SnapshotData>();
-    const [fileInfo, setFileInfo] = useState<FileInfo>({});
+    const [candidate, setCandidate] = useOptional<VideoService.Snapshot>();
 
     const [videoRef, canvasRef, controller] = video.useVideoCapture();
 
@@ -69,36 +60,15 @@ export const Camera = () => {
         )
     }
 
-    const handleChangeFileInfo = (key: keyof FileInfo) => (next: string) => {
-        setFileInfo(prev => ({ ...prev, [key]: next.length === 0 ? undefined : next}))
-    }
-
     const handleSave = () => {
         pipe(
             Match.value(state),
-            Match.tag("Snapshot", ({ snap: [data, dimensions] }) => {
+            Match.tag("Snapshot", () => {
                 return Effect.gen(function*(){
-                    const { imageName: rawImageName, patientName } = fileInfo
-                    if( rawImageName && patientName ){
-                        let imageName = rawImageName.trim();
-                        if( !rawImageName.endsWith(".png") ){
-                            imageName = `${imageName}.png`;
-                        }
+                    setState(Capture());
+                    setCandidate();
 
-                        yield* images.save({
-                            data: new Uint8Array(data),
-                            dimensions,
-                            fileType: "image/png",
-                            imageName,
-                            patientName,
-                        })
-
-                        setFileInfo({})
-                        setState(Capture());
-                        setCandidate();
-
-                        yield* controller.startCapture();
-                    }
+                    yield* controller.startCapture();
                 })
             }),
             Match.orElse(() => Effect.void),
@@ -134,43 +104,11 @@ export const Camera = () => {
         right={state._tag === "Capture" ? "gallery" : undefined}
         onAction={handleAction}
     >
-        <Modal
-            open={Option.isSome(candidate)}
-            onClose={() => setCandidate()}
-        >
-            <h1 style={{ marginLeft: "6px", marginBottom: "18px"}}>Guardar Imagen</h1>
-            <Input 
-                wide
-                placeholder="Nombre de Archivo" 
-                value={fileInfo.imageName} 
-                onChange={handleChangeFileInfo("imageName")}
-            />
-            <Input 
-                wide
-                placeholder="Nombre de Paciente" 
-                value={fileInfo.patientName} 
-                onChange={handleChangeFileInfo("patientName")}
-            />
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "space-around",
-                    alignItems: "center",
-                    marginTop: "10px"
-                }}
-            >
-                <Button.Secondary 
-                    color="red"
-                    onClick={() => setCandidate()}
-                >Cancel</Button.Secondary>
-                <div style={{ width: "30px"}}></div>
-                <Button.Primary 
-                    color="green"
-                    onClick={handleSave}
-                >Guardar</Button.Primary>
-            </div>
-        </Modal>
+        <SaveSnapshotModal
+            candidate={candidate}
+            onAccept={handleSave}
+            onCancel={() => setCandidate()}
+        />
         <video style={{ display: "none" }} ref={videoRef} />
         <canvas
             ref={canvasRef}

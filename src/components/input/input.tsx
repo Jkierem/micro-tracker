@@ -33,7 +33,5 @@ export const Input = ({
         onChange(e.target.value)
     }
 
-    const trueValue = value ? value : undefined
-
-    return <Styled $wide={wide} placeholder={placeholder} value={trueValue} onChange={handleChange} />
+    return <Styled $wide={wide} placeholder={placeholder} value={value ?? ""} onChange={handleChange} />
 }

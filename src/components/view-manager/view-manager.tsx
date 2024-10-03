@@ -19,7 +19,7 @@ export const ViewManager = () => {
             Match.tag("Capture", () => <Capture />),
             Match.tag("Camera", () => <Camera />),
             Match.tag("Gallery", () => <Gallery />),
-            Match.tag("Visualizer", ({ file }) => <Visualizer file={file} />),
+            Match.tag("Visualizer", ({ data }) => <Visualizer data={data} />),
             Match.orElse(() => <NotFound />)
         )}
     </>

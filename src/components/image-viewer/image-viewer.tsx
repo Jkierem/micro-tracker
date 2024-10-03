@@ -5,7 +5,7 @@ import { Services } from "../services-provider/services.provider";
 export const ImageViewer = () => {
     const { images, loader } = Services.use();
 
-    const [canvasRef, imageState, imageController] = loader.useImageLoader();
+    const [canvasRef, imageState, imageController] = loader.useImageRenderer();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { files } = e.target;

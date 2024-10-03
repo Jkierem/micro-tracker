@@ -17,8 +17,12 @@ const BaseContainer = styled.div`
 `
 
 const Content = styled.main`
+    position: relative;
     height: calc(100vh - (${navbarHeight}));
     width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 `
 
 const NavBarContainer = styled.div`
@@ -67,11 +71,15 @@ const NavBar = styled.nav`
 
 export type Action = IconName;
 
+export declare namespace ViewBase {
+    type Event = React.MouseEvent<HTMLDivElement>
+}
+
 type BaseProps = {
     left?: Action,
     center?: Action,
     right?: Action,
-    onAction?: (action: Action) => void,
+    onAction?: (action: Action, e: ViewBase.Event) => void,
     children?: React.ReactNode
 }
 
@@ -82,9 +90,10 @@ const Template = ({
     onAction,
     children
 }: BaseProps) => {
-    const handleAction = (action?: Action) => () => {
+    const handleAction = (action?: Action) => (e: ViewBase.Event) => {
+        e.stopPropagation();
         if( action ){
-            onAction?.(action);
+            onAction?.(action, e);
         }
     }
 
@@ -111,9 +120,9 @@ const Template = ({
 interface DefaultProps {
     children?: React.ReactNode,
     action?: Action,
-    onAction?: (action: Action) => void,
-    onHome?: () => void,
-    onBack?: () => void,
+    onAction?: (action: Action, e: ViewBase.Event) => void,
+    onHome?: (e: ViewBase.Event) => void,
+    onBack?: (e: ViewBase.Event) => void,
 }
 
 export const ViewBase = ({ 
@@ -129,24 +138,24 @@ export const ViewBase = ({
 
     const isMain = isView(Views.Main())(current);
 
-    const handleHome = () => {
+    const handleHome = (e: ViewBase.Event) => {
         router.goToMain();
-        onHome?.();
+        onHome?.(e);
     }
 
-    const handleBack = () => {
+    const handleBack = (e: ViewBase.Event) => {
         router.goBack().pipe(Effect.runSync);
-        onBack?.();
+        onBack?.(e);
     }
 
-    const handleAction = (act: Action) => {
+    const handleAction = (act: Action, e: ViewBase.Event) => {
         switch(act){
             case "home":
-                return handleHome();
+                return handleHome(e);
             case "back":
-                return handleBack();
+                return handleBack(e);
             default:
-                onAction?.(act);
+                onAction?.(act, e);
         }
     }
 
