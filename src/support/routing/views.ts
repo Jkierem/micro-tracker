@@ -1,11 +1,12 @@
 import { Data } from "effect";
+import { ImageLoader } from "../../services/image-loader.service";
 
 export type View = Data.TaggedEnum<{
     Login: {},
     Main: {},
     Capture: {},
     Camera: {},
-    Visualizer: {},
+    Visualizer: { readonly file: ImageLoader.FileContainer },
     Gallery: {},
     Reports: {},
     Report: {},

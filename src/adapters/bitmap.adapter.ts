@@ -1,6 +1,7 @@
 import { Context, Data, Effect, Layer, Option } from "effect"
 import { DOMAdapter } from "./dom.adapter";
 import { ImageRepo } from "./image.repository";
+import { CanvasUtilities } from "../support/render/canvas";
 
 export class RenderError
 extends Data.TaggedError("RenderError")<{ error: unknown }> {}
@@ -11,7 +12,7 @@ extends Data.TaggedError("CanvasContextError") {}
 export declare namespace BitmapAdapter {
     type Shape = {
         draw: (
-            data: Uint8Array, 
+            data: Uint8Array | ImageData, 
             canvas: HTMLCanvasElement
         ) => Effect.Effect<ImageRepo.Dimensions, RenderError | CanvasContextError>;
     }
@@ -24,10 +25,16 @@ extends Context.Tag("BitmapAdapter")<
     static Live = Layer.effect(BitmapAdapter, Effect.gen(function*(_){
         const global = yield* DOMAdapter.Global;
 
-        const create = (data: Uint8Array) => {
-            const blob = new Blob([data]);
+        const create = (data: Uint8Array | ImageData) => {
             return Effect.tryPromise({
-                try: () => global.createImageBitmap(blob),
+                try: () => {
+                    if( ArrayBuffer.isView(data) ){
+                        const blob = new Blob([data]);
+                        return global.createImageBitmap(blob)
+                    } else {
+                        return global.createImageBitmap(data, 0, 0, data.width, data.height);
+                    }
+                },
                 catch(error) {
                     return new RenderError({ error });
                 },
@@ -41,9 +48,11 @@ extends Context.Tag("BitmapAdapter")<
                 const usingBitmap = (bitmap: ImageBitmap) => {
                     return Effect.gen(function*(_){
                         const ctx = yield* Option.fromNullable(canvas.getContext("2d"));
-                        canvas.width = bitmap.width;
-                        canvas.height = bitmap.height;
-                        ctx.drawImage(bitmap, 0, 0);
+
+                        CanvasUtilities.paintWithAspectRatio(canvas, ctx, bitmap);
+                        // canvas.width = bitmap.width;
+                        // canvas.height = bitmap.height;
+                        // ctx.drawImage(bitmap, 0, 0);
                         return {
                             width: bitmap.width,
                             height: bitmap.height

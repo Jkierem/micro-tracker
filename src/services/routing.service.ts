@@ -2,12 +2,23 @@ import { Context, Effect, Layer, Option, pipe, Ref } from "effect"
 import { View, Views } from "../support/routing/views";
 import { StateService } from "./state.service";
 
+type VoidIfEmpty<A> = keyof A extends never ? [] : [routeData: A]
+
+type Simplify<T> = T extends unknown 
+    ? { [K in keyof T]: T[K] }
+    : never;
+
+type RouteArgs<P extends string> = VoidIfEmpty<Simplify<Omit<Extract<View, { _tag: P }>, "_tag"> >>
+
 export declare namespace RoutingService {
     type Shape = {
         useCurrentView: () => View;
         goBack: () => Effect.Effect<void>;
         goTo: (next: View) => Effect.Effect<void>; 
-    } & { [P in View['_tag'] as `goTo${P}`]: () => void}
+    } 
+    & { [P in View['_tag'] as `goTo${P}`]: (...args: RouteArgs<P>) => void}
+    & { [P in View['_tag'] as `goTo${P}Effect`]: (...args: RouteArgs<P>) => Effect.Effect<void> }
+
 }
 
 export class RoutingService 
@@ -20,7 +31,7 @@ extends Context.Tag("@service/routing")<
 
         const [reader, writer] = state.Global.at("view").split();
 
-        const HISTORY_LIMIT = 10;
+        const HISTORY_LIMIT = Infinity;
 
         const history = yield* _(
             state.get(),
@@ -55,11 +66,17 @@ extends Context.Tag("@service/routing")<
         const dynamics = (Object.keys(Views) as (View['_tag'])[]).reduce((dyn, view) => {
             return {
                 ...dyn,
-                [`goTo${view}`](){
-                    return history.push(Views[view]()).pipe(Effect.runSync);
+                [`goTo${view}`](args: any){
+                    return history.push(Views[view](args)).pipe(Effect.runSync);
+                },
+                [`goTo${view}Effect`](args: any){
+                    return history.push(Views[view](args));
                 }
             }
-        }, {} as { [P in View['_tag'] as `goTo${P}`]: () => Effect.Effect<void>})
+        }, {} as 
+            { [P in View['_tag'] as `goTo${P}`]: () => void }
+            & { [P in View['_tag'] as `goTo${P}Effect`]: () => Effect.Effect<void> }
+        )
 
         return RoutingService.of({
             useCurrentView() {

@@ -18,10 +18,10 @@ export const MainMenu = () => {
     const { router } = Services.use();
 
     return <Container>
-        <RouteButton onClick={() => router.goToImageViewer()}>View Tiff</RouteButton>
+        {/* <RouteButton onClick={() => router.goToImageViewer()}>View Tiff</RouteButton> */}
         <RouteButton onClick={() => router.goToGallery()}>Browse Gallery</RouteButton>
         <RouteButton onClick={() => router.goToCamera()}>Capture Image</RouteButton>
-        <RouteButton onClick={() => router.goToTest()}>Test Python</RouteButton>
-        <RouteButton disabled onClick={() => router.goToArchive()}>Browse Reports</RouteButton>
+        {/* <RouteButton onClick={() => router.goToTest()}>Test Python</RouteButton> */}
+        {/* <RouteButton disabled onClick={() => router.goToArchive()}>Browse Reports</RouteButton> */}
     </Container>
 }

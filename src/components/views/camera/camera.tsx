@@ -106,6 +106,13 @@ export const Camera = () => {
         )
     }
 
+    const handleGoToGallery = () => {
+        Effect.all([
+            controller.stopCapture(),
+            router.goToGalleryEffect(),
+        ]).pipe(Effect.runPromise)
+    }
+
     const handleAction = (action: Action) => {
         switch(action){
             case "back":
@@ -114,6 +121,8 @@ export const Camera = () => {
             case "camera":
             case "upload":
                 return handleCapture();
+            case "gallery":
+                return handleGoToGallery();
             default:
                 break;
         }
@@ -122,6 +131,7 @@ export const Camera = () => {
     return <ViewBase.Custom
         left={state._tag === "Capture" ? "back": "delete"}
         center={state._tag === "Capture" ? "camera" : "upload"}
+        right={state._tag === "Capture" ? "gallery" : undefined}
         onAction={handleAction}
     >
         <Modal

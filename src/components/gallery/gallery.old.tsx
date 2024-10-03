@@ -7,7 +7,7 @@ import { Resource } from "../../support/effect";
 export const Gallery = () => {
     const { images, loader } = Services.use();
     const [displayed, setDisplayed] = useOptional<ImageRepo.Image>();
-    const [canvasRef, _, imageController] = loader.useImageLoader();
+    const [canvasRef, _, imageController] = loader.useImageRenderer();
     const [imagesResource, refresh] = images.useAll();
 
     const imageList = pipe(
@@ -33,7 +33,10 @@ export const Gallery = () => {
                                 <button
                                     onClick={() => {
                                         pipe(
-                                            imageController.load(image.data, image.fileType),
+                                            imageController.render({
+                                                data: image.data, 
+                                                type: image.fileType
+                                            }),
                                             Effect.tap(() => setDisplayed(image)),
                                             Effect.runPromise
                                         )

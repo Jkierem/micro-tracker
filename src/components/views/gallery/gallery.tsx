@@ -1,12 +1,13 @@
 import styled, { keyframes } from "styled-components";
-import { Services } from "../services-provider/services.provider"
-import { ViewBase } from "../view-base/view-base"
+import { Services } from "../../services-provider/services.provider"
+import { ViewBase } from "../../view-base/view-base"
 import { Effect, Match, Option, pipe } from "effect";
-import { Resource } from "../../support/effect";
-import { Modal } from "../modal/modal";
-import { useOptional } from "../../support/effect/use-optional";
-import { ImageRepo } from "../../adapters/image.repository";
-import { Button } from "../button/button";
+import { Resource } from "../../../support/effect";
+import { Modal } from "../../modal/modal";
+import { useOptional } from "../../../support/effect/use-optional";
+import { ImageRepo } from "../../../adapters/image.repository";
+import { Button } from "../../button/button";
+import { FileContainer } from "../../../services/image-loader.service";
 
 const Content = styled.div`
     width: 100%;
@@ -61,7 +62,7 @@ const Row = styled.div`
 `
 
 export const Gallery = () => {
-    const { images } = Services.use();
+    const { images, router } = Services.use();
     const [imageToDelete, setImageToDelete] = useOptional<ImageRepo.Image>();
     const [imagesResource, refresh] = images.useAll();
 
@@ -69,6 +70,10 @@ export const Gallery = () => {
         imagesResource,
         Resource.withEmpty((images) => images.length === 0)
     )
+
+    const handleOpenImage = (image: ImageRepo.Image) => () => {
+        router.goToVisualizer({ file: FileContainer.fromImage(image) });
+    }
 
     const handleDelete = () => {
         Effect.gen(function*(_){
@@ -126,7 +131,7 @@ export const Gallery = () => {
                 Match.tag("Empty", () => <h1>-- No Images --</h1>),
                 Match.tag("Success", ({ data }) => {
                     return data.map((image, idx) => {
-                        return <Row key={`${image.id}+${idx}`}>
+                        return <Row key={`${image.id}+${idx}`} onClick={handleOpenImage(image)}>
                             <div>{image.imageName}</div>
                             <div>{image.patientName}</div>
                             <div>{image.updatedAt.toISOString()}</div>

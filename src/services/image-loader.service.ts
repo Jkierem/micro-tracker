@@ -13,6 +13,21 @@ extends Data.TaggedError("NullCanvasError") {}
 export class UnsupportedFileError
 extends Data.TaggedError("UnsupportedFileError")<{ fileType: string }> {}
 
+export class FileContainer {
+    private constructor(
+        readonly data: Uint8Array,
+        readonly type: ImageRepo.FileType
+    ){}
+
+    public static make({ data, type }: { data: Uint8Array, type: ImageRepo.FileType }){
+        return new FileContainer(data, type);
+    }
+
+    public static fromImage(image: ImageRepo.Image){
+        return new FileContainer(image.data, image.fileType);
+    }
+}
+
 export declare namespace ImageLoader {
     type CanvasError = NullCanvasError | CanvasContextError;
     type CanvasRef = React.RefObject<HTMLCanvasElement>;
@@ -20,7 +35,12 @@ export declare namespace ImageLoader {
     type ClearError  = CanvasError;
     type UpdateError = ClearError  | RenderError;
     type LoadError   = UpdateError | ProcessingError;
-    type UploadError = LoadError   | UnsupportedFileError | HttpError;
+    type VerifyError = UnsupportedFileError | HttpError;
+
+    type FileContainer = {
+        data: Uint8Array,
+        type: ImageRepo.FileType
+    }
 
     type ImageState = Option.Option<{
         dimensions: ImageRepo.Dimensions,
@@ -31,14 +51,14 @@ export declare namespace ImageLoader {
     }>
     
     type ImageController = {
-        upload: (file: File) => Effect.Effect<void, UploadError>;
-        load: (data: Uint8Array, fileType: ImageRepo.FileType) => Effect.Effect<void, LoadError>,
+        render: (file: FileContainer) => Effect.Effect<void, LoadError>,
         clear: () => Effect.Effect<void, ClearError>;
         update: (fn: (prev: ImageState) => ImageState) => Effect.Effect<void, UpdateError>;
     }
 
     type Shape = {
-        useImageLoader: () => [CanvasRef, ImageState, ImageController];
+        verifyFile: (file: File) => Effect.Effect<FileContainer, VerifyError>;
+        useImageRenderer: () => [CanvasRef, ImageState, ImageController];
     }
 }
 export class ImageLoader
@@ -52,7 +72,21 @@ extends Context.Tag("@service/image-loader")<
         const fileService = yield* FileService;
 
         return ImageLoader.of({
-            useImageLoader() {
+            verifyFile(file) {
+                return Effect.gen(this, function*(_){
+                    const fileType = yield* _(
+                        Schema.decodeUnknown(FileType)(file.type),
+                        Effect.mapError(() => new UnsupportedFileError({ fileType: file.type }))
+                    );
+                    const buffer = yield* fileService.getArrayBuffer(file);
+                    const data = new Uint8Array(buffer);
+                    return FileContainer.make({
+                        data,
+                        type: fileType
+                    })
+                })
+            },
+            useImageRenderer() {
                 const [current, setCurrent] = useState<ImageLoader.ImageState>(Option.none());
                 const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -70,17 +104,7 @@ extends Context.Tag("@service/image-loader")<
                 )
 
                 const controller: ImageLoader.ImageController = {
-                    upload(file) {
-                        return Effect.gen(this, function*(_){
-                            const fileType = yield* _(
-                                Schema.decodeUnknown(FileType)(file.type),
-                                Effect.mapError(() => new UnsupportedFileError({ fileType: file.type }))
-                            );
-                            const buffer = yield* fileService.getArrayBuffer(file);
-                            return yield* this.load(new Uint8Array(buffer), fileType);
-                        })
-                    },
-                    load(data, fileType) {
+                    render({ data, type: fileType }) {
                         return this.clear().pipe(
                             Effect.flatMap(() => {
                                 return Effect.gen(function*(_){
@@ -97,15 +121,9 @@ extends Context.Tag("@service/image-loader")<
                                         }))
                                         const ifd = ifds[0];
                                         const slice = slices[0];
-                                        dimensions = {
-                                            width: ifd.width,
-                                            height: ifd.height
-                                        }
-                                        canvas.width = ifd.width;
-                                        canvas.height = ifd.height;
                                         const cvImage = ctx.createImageData(ifd.width, ifd.height);
                                         cvImage.data.set(slice);
-                                        ctx.putImageData(cvImage, 0, 0);
+                                        dimensions = yield* Bitmap.draw(cvImage, canvas);
                                     } else {
                                         slices = [data];
                                         const slice = slices[0];
@@ -125,7 +143,6 @@ extends Context.Tag("@service/image-loader")<
                     clear() {
                         return Effect.gen(function* (_){
                             const [canvas, ctx] = yield* CanvasContex
-
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
                             setCurrent(Option.none());
                         })
@@ -141,11 +158,9 @@ extends Context.Tag("@service/image-loader")<
                                     const [canvas, ctx] = yield* CanvasContex;
                                     if( state.fileType === "image/tiff" ){
                                         const { width, height } = state.dimensions;
-                                        canvas.width = width;
-                                        canvas.height = height;
                                         const cvImage = ctx.createImageData(width, height);
                                         cvImage.data.set(slice);
-                                        ctx.putImageData(cvImage, 0, 0);
+                                        return yield* Bitmap.draw(cvImage, canvas);
                                     } else {
                                         return yield* Bitmap.draw(slice, canvas);
                                     }

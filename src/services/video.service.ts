@@ -3,6 +3,7 @@ import { MutableRefObject, useEffect, useRef } from "react";
 import { NavigatorAdapter } from "../adapters/navigator.adapter";
 import { NoSuchElementException } from "effect/Cause";
 import { ImageRepo } from "../adapters/image.repository";
+import { CanvasUtilities } from "../support/render/canvas";
 
 export class PlaybackError
 extends Data.TaggedError("PlaybackError")<{ error: unknown }> {}
@@ -50,44 +51,6 @@ extends Context.Tag("VideoService")<
         const requests = yield* Queue.unbounded<VideoEvent>();
         let currentFrame: undefined | number;
 
-        type Size = {
-            width: number,
-            height: number
-        }
-
-        function calculateSize(srcSize: Size, dstSize: Size) {
-            var srcRatio = srcSize.width / srcSize.height;
-            var dstRatio = dstSize.width / dstSize.height;
-            if (dstRatio > srcRatio) {
-              return {
-                width:  dstSize.height * srcRatio,
-                height: dstSize.height
-              };
-            } else {
-              return {
-                width:  dstSize.width,
-                height: dstSize.width / srcRatio
-              };
-            }
-          }
-
-        const paintVideo = (
-            canvas: HTMLCanvasElement,
-            context: CanvasRenderingContext2D,
-            video: HTMLVideoElement
-        ) => {
-            canvas.width = canvas.scrollWidth;
-            canvas.height = canvas.scrollHeight;
-            const videoSize = { width: video.videoWidth, height: video.videoHeight };
-            const canvasSize = { width: canvas.width, height: canvas.height };
-            const renderSize = calculateSize(videoSize, canvasSize);
-            const xOffset = (canvasSize.width - renderSize.width) / 2;
-            const yOffset = (canvasSize.height - renderSize.height) / 2
-            context.fillStyle = "rgb(0,0,0)";
-            context.fillRect(0,0,canvas.width, canvas.height);
-            context.drawImage(video, xOffset, yOffset, renderSize.width, renderSize.height);
-        }
-
         const startEvent = ({ canvasRef, videoRef }: StartVideo) => Effect.gen(function*(_){
             const video = yield* (Option.fromNullable(videoRef.current));
             const stream = yield* media.getVideo();
@@ -109,7 +72,7 @@ extends Context.Tag("VideoService")<
             const canvas = yield* Option.fromNullable(canvasRef.current);
             const ctx = yield* Option.fromNullable(canvas.getContext("2d"))
             const paint = () => {
-                paintVideo(canvas, ctx, video);
+                CanvasUtilities.paintWithAspectRatio(canvas, ctx, video);
                 if( capturing ){
                     currentFrame = requestAnimationFrame(paint)
                 }
@@ -186,14 +149,7 @@ extends Context.Tag("VideoService")<
                             Effect.bind("ctx", ({ canvas }) => Option.fromNullable(canvas.getContext("2d"))),
                             Effect.flatMap(({ video, canvas, ctx }) => {
                                 return Effect.gen(function*(){
-                                    ctx.clearRect(0,0,canvas.width, canvas.height);
-                                    canvas.width = video.videoWidth;
-                                    canvas.height = video.videoHeight;
-                                    ctx.drawImage(
-                                        video, 
-                                        0, 0, video.videoWidth, video.videoHeight, 
-                                        0, 0, canvas.width, canvas.height
-                                    );
+                                    CanvasUtilities.paint(canvas, ctx, video);
                                     const blob = yield* Effect.tryPromise({
                                         try: () => new Promise<Blob>((res, rej) => canvas.toBlob((blob) => blob ? res(blob) : rej(blob), "image/png")),
                                         catch(error) {
@@ -207,7 +163,7 @@ extends Context.Tag("VideoService")<
                                             return new SerializeError({ error })
                                         },
                                     })
-                                    paintVideo(canvas, ctx, video);
+                                    CanvasUtilities.paintWithAspectRatio(canvas, ctx, video);
 
                                     return [buffer, {
                                         width: video.videoWidth,

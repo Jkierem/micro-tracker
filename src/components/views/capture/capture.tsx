@@ -1,11 +1,16 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { IconButton } from "../../icon-button/icon-button"
 import { Services } from "../../services-provider/services.provider"
 import { ViewBase } from "../../view-base/view-base"
 import { SupportedFileTypes } from "../../../adapters/image.repository";
+import { Modal } from "../../modal/modal";
+import { Effect } from "effect";
+import { Button } from "../../button/button";
 
 export const Capture = () => {
-    const { router } = Services.use();
+    const { router, loader } = Services.use();
+    const [error, setError] = useState<string | undefined>()
+
     const handleCamera = () => {
         router.goToCamera();
     }
@@ -19,10 +24,35 @@ export const Capture = () => {
     }
 
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(e.target.files)
+        if( e.target.files?.[0] ){
+            loader.verifyFile(e.target.files[0]).pipe(
+                Effect.flatMap(file => {
+                    return router.goToVisualizerEffect({ file })
+                }),
+                Effect.catchTag("UnsupportedFileError", (e) => {
+                    setError(`Archivos ${e.fileType} no son soportados`);
+                    return Effect.void;
+                }),
+                Effect.catchTag("RequestError", () => {
+                    setError("Error al pedir archivo");
+                    return Effect.void;
+                }),
+                Effect.catchTag("ProcessingError", () => {
+                    setError("Error procesando archivo")
+                    return Effect.void;
+                }),
+                Effect.runPromise
+            )
+        }
     }
 
     return <ViewBase>
+        <Modal open={Boolean(error)}>
+            <h1>{error}</h1>
+            <Button.Primary color="red" onClick={() => setError(undefined)}>
+                Aceptar
+            </Button.Primary>
+        </Modal>
         <IconButton.Group>
             <IconButton icon="camera" text="Camara" onClick={handleCamera} />
             <IconButton icon="upload" text="Subir Archivo" onClick={triggerUpload} />
