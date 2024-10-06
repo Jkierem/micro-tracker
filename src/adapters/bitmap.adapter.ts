@@ -1,7 +1,7 @@
 import { Context, Data, Effect, Layer, Option } from "effect"
 import { DOMAdapter } from "./dom.adapter";
 import { ImageRepo } from "./image.repository";
-import { CanvasUtilities } from "../support/render/canvas";
+import { CanvasUtilities, Offset } from "../support/render/canvas";
 
 export class RenderError
 extends Data.TaggedError("RenderError")<{ error: unknown }> {}
@@ -18,7 +18,7 @@ export declare namespace BitmapAdapter {
         draw: (
             data: Uint8Array | ImageData, 
             canvas: HTMLCanvasElement
-        ) => Effect.Effect<ImageRepo.Dimensions, RenderError | CanvasContextError>;
+        ) => Effect.Effect<ImageRepo.Dimensions & Offset, RenderError | CanvasContextError>;
     }
 }
 export class BitmapAdapter
@@ -51,7 +51,8 @@ extends Context.Tag("BitmapAdapter")<
             prepareSnapshot(data, canvas) {
                 const usingBitmap = (bitmap: ImageBitmap) => {
                     return Effect.gen(function*(_){
-                        const ctx = yield* Option.fromNullable(canvas.getContext("2d"));
+                        type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null
+                        const ctx = yield* Option.fromNullable(canvas.getContext("2d") as Ctx);
 
                         CanvasUtilities.paint(canvas, ctx, bitmap);
                         return {
@@ -71,10 +72,11 @@ extends Context.Tag("BitmapAdapter")<
                     return Effect.gen(function*(_){
                         const ctx = yield* Option.fromNullable(canvas.getContext("2d"));
 
-                        CanvasUtilities.paintWithAspectRatio(canvas, ctx, bitmap);
+                        const offsets = CanvasUtilities.paintWithAspectRatio(canvas, ctx, bitmap);
                         return {
                             width: bitmap.width,
-                            height: bitmap.height
+                            height: bitmap.height,
+                            ...offsets
                         }
                     }).pipe(Effect.mapError(() => new CanvasContextError()))
                 }

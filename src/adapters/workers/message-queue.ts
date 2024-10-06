@@ -1,57 +1,147 @@
-import { Data, Effect, pipe } from "effect";
-import { WorkerAdapter } from "./worker.adapter";
-import { ImageRepo } from "../image.repository";
+import { Data, Effect, Option, pipe } from "effect"
+import { PythonOutgoingMessage, QueueIncomingMessage, Result, ScheduleJob } from "./messages"
+import { JobRepo } from "../job.repository"
 import { IndexedDBAdapter } from "../indexed-db/index-db.adapter";
 import { DOMAdapter } from "../dom.adapter";
-import { Result } from "./messages";
 import { IDBKey } from "../indexed-db/indexed-db.support";
-import { Queue } from "../../support/effect/worker-queue";
+import PythonRunner from "./python-runnner?worker";
+import { ImageRepo } from "../image.repository";
+import { JobQueue } from "./job-queue";
 
-export class ScheduleJob
-extends Data.TaggedClass("ScheduleJob")<{ imageId: number }> {}
-export class JobResult
-extends Data.TaggedClass("JobResult")<{ 
-    result: unknown
-}> {}
+export class Waiting
+extends Data.TaggedClass("Waiting") {}
+export class Ready
+extends Data.TaggedClass("Ready") {}
+export class Busy
+extends Data.TaggedClass("Busy")<{ jobId: number }> {}
+type WorkerState = Waiting | Ready | Busy;
 
-type QueueMessages = 
-    | ScheduleJob
-    | JobResult
+class WorkerTracker {
+    private static _instance: WorkerTracker;
 
-const Jobs = Queue.make<Result>((e) => {
-    self.postMessage(e.data);
-})
+    private state: WorkerState;
 
-const { Workers, Images } = Effect.gen(function*(){
-    const Workers = yield* WorkerAdapter;
-    const Images = yield* ImageRepo;
-
-    return {
-        Workers,
-        Images,
+    public static get instance(){
+        if( !this._instance ){
+            this._instance = new WorkerTracker();
+        }
+        return this._instance;
     }
-}).pipe(
-    Effect.provide(WorkerAdapter.Live),
-    Effect.provide(ImageRepo.Live),
-    Effect.provide(IndexedDBAdapter.Live),
-    Effect.provide(DOMAdapter.Live)
-).pipe(Effect.runSync)
 
-Effect.gen(function*(_){
-    const worker = yield* Workers.instantiateAndWait("PythonRunner");
-    Jobs.bind(worker);
-}).pipe(Effect.runPromise)
+    private constructor(){
+        this.state = new Waiting();
+    }
 
-type MessageData = {
-    imageId: number
-};
+    public static isReady(){
+        return this.instance.state._tag === "Ready";
+    }
 
-self.onmessage = async (e: MessageEvent<MessageData>) => {
-    const image = await pipe(
-        Images.read(IDBKey.fromNumber(e.data.imageId)),
-        Effect.runPromise
-    )
+    public static ready(){
+        this.instance.state = new Ready();
+    }
 
-    Jobs.enqueue({ image });
+    public static free(){
+        if( this.instance.state._tag === "Busy" ){
+            this.instance.state = new Ready();
+        }
+    }
+
+    public static lock(jobId: number){
+        if( this.instance.state._tag === "Ready" ){
+            this.instance.state = new Busy({ jobId });
+        }
+    }
 }
 
+const jobRepo =  await pipe(
+    JobRepo,
+    Effect.provide(JobRepo.Live),
+    Effect.provide(IndexedDBAdapter.Live),
+    Effect.provide(DOMAdapter.Live),
+    Effect.runPromise
+)
+
+const imageRepo = await pipe(
+    ImageRepo,
+    Effect.provide(ImageRepo.Live),
+    Effect.provide(IndexedDBAdapter.Live),
+    Effect.provide(DOMAdapter.Live),
+    Effect.runPromise
+)
+
+const pythonWorker = new PythonRunner();
+
+const queue = new JobQueue(jobRepo);
+
+await queue.fetchJobs().pipe(Effect.runPromise);
+
+const checkQueue = () => {
+    return Effect.gen(function*(_){
+        const nextInQueue = queue.check();
+        if( Option.isSome(nextInQueue) && WorkerTracker.isReady()){
+            const image = yield* imageRepo.read(IDBKey.fromNumber(nextInQueue.value.imageId));
+            pythonWorker.postMessage(new ScheduleJob({
+                image,
+                jobId: nextInQueue.value.id,
+            }), [image.data.buffer])
+        }
+        self.postMessage(queue.sync());
+    })
+}
+
+const onPythonReady = () => Effect.gen(function*(){
+    WorkerTracker.ready();
+    yield* checkQueue();
+})
+
+const onFinishJob = ({ jobId, data }: Result) => Effect.gen(function*(){
+    yield* queue.finish(jobId, data);
+    WorkerTracker.free();
+    yield* checkQueue()
+})
+
+const onStartJob = (jobId: number) => Effect.gen(function*(){
+    yield* queue.start(jobId);
+    WorkerTracker.lock(jobId);
+    self.postMessage(queue.sync());
+})
+
+const onRequestJob = (imageId: number) => {
+    return Effect.gen(function*(_){
+        yield* queue.schedule(imageId)
+        yield* checkQueue()
+    })
+}
+
+const PythonMessageSink = async (e: MessageEvent<PythonOutgoingMessage>) => {
+    switch(e.data._tag){
+        case "Ready":
+            await onPythonReady().pipe(Effect.runPromise);
+            break;
+        case "Result":
+            await onFinishJob(e.data).pipe(Effect.runPromise);
+            break;
+        case "Started":
+            await onStartJob(e.data.jobId).pipe(Effect.runPromise)
+            break;
+        case "Error":
+            break;
+    }
+}
+
+pythonWorker?.addEventListener("message", PythonMessageSink);
+
+const MessageQueueSink = async (e: MessageEvent<QueueIncomingMessage>) => {
+    switch(e.data._tag){
+        case "RequestJob":
+            await onRequestJob(e.data.imageId).pipe(Effect.runPromise);
+            break;
+        case "RequestSync":
+            self.postMessage(queue.sync());
+            break;
+    }
+}
+
+self.addEventListener("message", MessageQueueSink);
+
+self.postMessage(queue.sync());

@@ -11,8 +11,10 @@ export type UpdateError = IndexedDBError | ParseResult.ParseError;
 
 export type CreateError = IndexedDBError | ParseResult.ParseError;
 
+export const IDBKeySchema = Schema.Number.pipe(Schema.fromBrand(IDBKey.fromNumber))
+
 const ComputedAtrubutes = Schema.Struct({
-    id: Schema.Number.pipe(Schema.fromBrand(IDBKey.fromNumber)),
+    id: IDBKeySchema,
     createdAt: Schema.Date,
     updatedAt: Schema.Date,
 })
@@ -66,10 +68,12 @@ export const fromObjectStore = <
                         Schema.encode(
                             schema.pipe(Schema.omit("id"))
                         )(raw),
-                        Effect.flatMap(data => store.add(data))
+                        Effect.flatMap(data => store.add(data)),
                     )
                 }),
-                Effect.map(([id]) => ({ ...data, id } as Data)),
+                Effect.map(([id, stored]) => {
+                    return Schema.decodeUnknownSync(schema)({ ...stored, id })
+                }),
             )
         },
         delete(id) {

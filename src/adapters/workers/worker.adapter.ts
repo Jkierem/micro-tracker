@@ -1,18 +1,27 @@
-import { Effect, Data, Context, Layer, pipe } from "effect"
+import { Effect, Data, Context, Layer, pipe, Ref, Option } from "effect"
 import MessageQueue from "./message-queue?worker";
-import PythonRunner from "./python-runnner?worker";
+import { JobQueueView } from "./job-queue";
+import { QueueOutgoingMessage, RequestJob, RequestSync } from "./messages";
+import { useEffect, useState } from "react";
+import { JobRepo } from "../job.repository";
+import { Resource } from "../../support/effect";
 
-export class WorkerError
-extends Data.TaggedError("WorkerError")<{ error: unknown }> {}
+export class WorkerNotReady
+extends Data.TaggedError("WorkerNotReady") {}
+export class JobRequested
+extends Data.TaggedClass("JobRequested") {}
+export class JobNotFound
+extends Data.TaggedError("JobNotFound")<{ jobId: number }>{}
 
 export declare namespace WorkerAdapter {
-    type AvailableWorker = 
-        | "MessageQueue"
-        | "PythonRunner"
-
     type Shape = {
-        instantiate: (worker: AvailableWorker) => Effect.Effect<Worker, WorkerError>;
-        instantiateAndWait: (worker: AvailableWorker) => Effect.Effect<Worker, WorkerError>;
+        sync(): void;
+        schedule(imageId: number): Effect.Effect<JobRequested, WorkerNotReady>;
+        useQueueView: () => [JobQueueView]
+        useJobView: (jobId: JobRepo.JobId) => [Resource.Resource<
+            JobRepo.Job,
+            JobNotFound
+        >]
     }
 }
 
@@ -21,54 +30,63 @@ extends Context.Tag("WorkerAdapter")<
     WorkerAdapter,
     WorkerAdapter.Shape
 >(){
-    static waitForWorker = (worker: Worker) => {
-        return Effect.async<void, unknown>((resume) => {
-            worker.onmessage = (e: MessageEvent<{ _tag: "Ready" | "Error" }>) => {
-                switch(e.data._tag){
-                    case "Ready":
-                        resume(Effect.void)
-                        break;
-                    case "Error":
-                        resume(Effect.fail(e.data))
-                        break;
-                }
-            }
-        })
-    }
     static Live = Layer.effect(WorkerAdapter, Effect.gen(function*(_){
+        const queue = yield* Ref.make(new JobQueueView());
+
+        const worker = new MessageQueue();
+
+        worker.onmessage = (e: MessageEvent<QueueOutgoingMessage>) => {
+            switch(e.data._tag){
+                case "Sync":
+                    pipe(
+                        queue,
+                        Ref.update((prev) => {
+                            prev.sync(e.data.data)
+                            return prev;
+                        }),
+                        Effect.runSync
+                    )
+                    break;
+            }
+        }
+
         return WorkerAdapter.of({
-            instantiate(worker) {
-                return Effect.try({
-                    try: () => {
-                        switch(worker){
-                            case "MessageQueue":
-                                return new MessageQueue();
-                            case "PythonRunner":
-                                return new PythonRunner();
-                        }
-                    },
-                    catch(error) {
-                        return new WorkerError({ error })
-                    },
+            sync(){
+                worker.postMessage(new RequestSync())
+            },
+            schedule(imageId){
+                return Effect.gen(function*(_){
+                    const q = yield* queue.get;
+                    if( !q.hasSynced() ){
+                        return yield* new WorkerNotReady();
+                    }
+                    worker.postMessage(new RequestJob({ imageId }))
+                    return new JobRequested();
                 })
             },
-            instantiateAndWait(workerName) {
-                return Effect.gen(this, function* (){
-                    const worker = yield* this.instantiate(workerName);
-                    yield* pipe(Effect.async<void, unknown>((resume) => {
-                        worker.onmessage = (e: MessageEvent<{ _tag: "Ready" | "Error" }>) => {
-                            switch(e.data._tag){
-                                case "Ready":
-                                    resume(Effect.void)
-                                    break;
-                                case "Error":
-                                    resume(Effect.fail(e.data))
-                                    break;
-                            }
+            useJobView(jobId) {
+                const [queue] = this.useQueueView();
+
+                return [pipe(
+                    queue.getJobs(),
+                    Option.map(jobs => {
+                        const job = jobs.find(job => job.id === jobId);
+                        if( job ){
+                            return Resource.Success(job);
+                        } else {
+                            return Resource.Error(new JobNotFound({ jobId }));
                         }
-                    }), Effect.orDie)
-                    return worker;
-                })
+                    }),
+                    Option.getOrElse(() => Resource.Loading())
+                )]
+            },
+            useQueueView() {
+                const [jobQueue, setQueue] = useState<JobQueueView>(() => queue.get.pipe(Effect.runSync))
+                useEffect(() => {
+                    return jobQueue.watch(setQueue)
+                },[]);
+
+                return [jobQueue];
             },
         })
     }))

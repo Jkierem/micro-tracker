@@ -6,7 +6,7 @@ import { Effect } from "effect";
 import { Icon, IconName } from "../icon/icon";
 import { isView, Views } from "../../support/routing/views";
 
-const navitemHeight = `min(200px, 10vh)`;
+export const navitemHeight = `min(200px, 10vh)`;
 const gutter = `min(80px, 5vh)`;
 const navbarContainerHeight = `calc(${navitemHeight} + ${gutter})`;
 const navbarHeight = `calc((${navitemHeight} / 2) + ${gutter})`;
@@ -16,25 +16,27 @@ const BaseContainer = styled.div`
     height: 100%;
 `
 
-const Content = styled.main`
+const Content = styled.main<{ $tall?: boolean }>`
     position: relative;
     height: calc(100vh - (${navbarHeight}));
+    ${({ $tall }) => $tall &&`height: calc(100vh - (${navitemHeight} + (${gutter} * 2)));`}
     width: 100%;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
 `
 
-const NavBarContainer = styled.div`
+const NavBarContainer = styled.div<{ $tall?: boolean }>`
     width: 100%;
     position: fixed;
     bottom: 0;
     left: 0;
     z-index: ${ZLayer.navigation};
     height: ${navbarContainerHeight};
+    ${({ $tall }) => $tall && `height: calc(${navitemHeight} + (${gutter} * 2));`}
 `
 
-const NavItem = styled.div<{ $hidden?: boolean }>`
+const NavItem = styled.div<{ $hidden?: boolean, $tall?: boolean }>`
     width: ${navitemHeight};
     height: ${navitemHeight};
     border-radius: 50%;
@@ -42,6 +44,7 @@ const NavItem = styled.div<{ $hidden?: boolean }>`
     border: 1px solid black;
     box-sizing: border-box;
     margin-bottom: calc((${navitemHeight} / 2) + ${gutter});
+    ${({ $tall }) => $tall && "margin-bottom: 0;"}
     visibility: ${({ $hidden }) => $hidden ? "hidden" : "visible"};
     display: flex;
     justify-content: center;
@@ -53,14 +56,16 @@ const NavItem = styled.div<{ $hidden?: boolean }>`
     }
 `
 
-const NavBar = styled.nav`
+const NavBar = styled.nav<{ $tall?: boolean }>`
     margin-top: calc(${navitemHeight} / 2);
+    ${({ $tall }) => $tall && "margin-top: 0;"}
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: row;
     height: calc((${navitemHeight} / 2) + ${gutter});
+    ${({ $tall }) => $tall && "height: 100%;"}
     background-color: black;
 
     :nth-child(2){
@@ -79,6 +84,7 @@ type BaseProps = {
     left?: Action,
     center?: Action,
     right?: Action,
+    tall?:boolean,
     onAction?: (action: Action, e: ViewBase.Event) => void,
     children?: React.ReactNode
 }
@@ -87,6 +93,7 @@ const Template = ({
     left,
     center,
     right,
+    tall,
     onAction,
     children
 }: BaseProps) => {
@@ -98,12 +105,13 @@ const Template = ({
     }
 
     return <BaseContainer>
-        <NavBarContainer>
-            <NavBar>
+        <NavBarContainer $tall={tall}>
+            <NavBar $tall={tall}>
                 {[left, center, right].map((action, actionIndex) => {
                     return <NavItem 
                         key={`action-${actionIndex}`} 
                         $hidden={!action} 
+                        $tall={tall}
                         onClick={handleAction(action)}
                     >
                         {action && <Icon name={action} />}
@@ -111,7 +119,7 @@ const Template = ({
                 })}
             </NavBar>
         </NavBarContainer>
-        <Content>
+        <Content $tall={tall}>
             {children}
         </Content>
     </BaseContainer>
@@ -119,6 +127,7 @@ const Template = ({
  
 interface DefaultProps {
     children?: React.ReactNode,
+    tall?: boolean,
     action?: Action,
     onAction?: (action: Action, e: ViewBase.Event) => void,
     onHome?: (e: ViewBase.Event) => void,
@@ -128,6 +137,7 @@ interface DefaultProps {
 export const ViewBase = ({ 
     children,
     action,
+    tall,
     onAction,
     onBack,
     onHome
@@ -167,6 +177,7 @@ export const ViewBase = ({
 
     return <Template
         {...actions}
+        tall={tall}
         onAction={handleAction}
     >
         {children}

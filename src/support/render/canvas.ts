@@ -40,6 +40,10 @@ function calculateSize(srcSize: Size, dstSize: Size) {
     }
 }
 
+export type Offset = {
+    xOffset: number,
+    yOffset: number,
+}
 
 export class CanvasUtilities {
     public static paint (
@@ -62,7 +66,7 @@ export class CanvasUtilities {
         canvas: HTMLCanvasElement,
         context: CanvasRenderingContext2D,
         resource: HTMLVideoElement | ImageBitmap,
-    ){
+    ): Offset {
         const media = MediaElement.make(resource);
         canvas.width = canvas.scrollWidth;
         canvas.height = canvas.scrollHeight;
@@ -72,5 +76,9 @@ export class CanvasUtilities {
         context.fillStyle = "rgb(0,0,0)";
         context.fillRect(0,0,canvas.width, canvas.height);
         context.drawImage(media.data, xOffset, yOffset, renderSize.width, renderSize.height);
+        return {
+            xOffset,
+            yOffset
+        }
     }
 }

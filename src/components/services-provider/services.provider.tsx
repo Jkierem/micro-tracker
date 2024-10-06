@@ -12,7 +12,6 @@ import { ImageLoader } from "../../services/image-loader.service"
 import { ImageService } from "../../services/image.service"
 import { RoutingService } from "../../services/routing.service"
 import { StateService } from "../../services/state.service"
-import { TIFFLoader } from "../../services/tiff-loader.service"
 import { VideoService } from "../../services/video.service"
 import { inject } from "../../support/effect/component"
 import { FileService } from "../../services/file.service"
@@ -57,7 +56,6 @@ extends Context.Tag("@providers/main")<
     .pipe(Layer.provide(Store.Live))
     .pipe(Layer.provide(FileService.Live))
     .pipe(Layer.provide(UrlAdapter.Live))
-    .pipe(Layer.provide(TIFFLoader.Live))
     .pipe(Layer.provide(TIFFAdapter.Live))
     .pipe(Layer.provide(BitmapAdapter.Live))
     .pipe(Layer.provide(IndexedDBAdapter.Live))

@@ -34,6 +34,9 @@ function PWABadge() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    onOfflineReady() {
+      console.log("Offline mode is ready")
+    },
     onRegisteredSW(swUrl, r) {
       if (period <= 0) return
       if (r?.active?.state === 'activated') {

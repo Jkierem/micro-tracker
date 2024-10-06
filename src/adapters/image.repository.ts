@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect";
-import { IDBValue, CRUD, fromObjectStore, ReadAllError } from "./indexed-db/crud";
+import { IDBValue, CRUD, fromObjectStore, ReadAllError, ReadError } from "./indexed-db/crud";
 import { IndexedDBAdapter } from "./indexed-db/index-db.adapter";
 import { MicroTrackerV1 } from "./indexed-db/databases/micro-tracker-v1";
 import { Schema } from "@effect/schema";
@@ -46,6 +46,12 @@ export declare namespace ImageRepo {
     type FileType = Schema.Schema.Type<typeof FileType>;
     type Image = Schema.Schema.Type<typeof Image>;
 
+    namespace Get.Single {
+        type Success = Image;
+        type Error = ReadError;
+        type Dependency = { id: number }
+    }
+
     namespace Get.All {
         type Success = Image[];
         type Error = ReadAllError;
@@ -74,6 +80,9 @@ extends Context.Tag("ImageRepo")<
         getFilePath(file: ImageRepo.Image): string {
             const { imageName, fileType } = file;
             const ext = fileType.slice(fileType.indexOf("/") + 1);
+            if( imageName.endsWith(`.${ext}`)){
+                return imageName;
+            }
             return `${imageName}.${ext}`;
         }
     }

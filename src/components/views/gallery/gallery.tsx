@@ -1,6 +1,6 @@
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
 import { Services } from "../../services-provider/services.provider"
-import { ViewBase } from "../../view-base/view-base"
+import { navitemHeight, ViewBase } from "../../view-base/view-base"
 import { Effect, Match, Option, pipe } from "effect";
 import { Resource } from "../../../support/effect";
 import { useOptional } from "../../../support/effect/use-optional";
@@ -8,6 +8,7 @@ import { ImageRepo } from "../../../adapters/image.repository";
 import { VisualizerDataTypes } from "../../../support/routing/views";
 import { DeleteImageModal } from "../../delete-image-modal/delete-image-modal";
 import { Icon } from "../../icon/icon";
+import { Loader } from "../../loader/loader";
 
 const Content = styled.div`
     width: 100%;
@@ -20,27 +21,7 @@ const Content = styled.div`
     box-sizing: border-box;
     overflow-y: scroll;
     overflow-x: hidden;
-`
-
-const rotate = keyframes`
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-`;
-
-const Loader = styled.div`
-    margin-block: auto;
-    width: min(60px, 10vh);
-    height: min(60px, 10vh);
-    background-color: white;
-    border: 2px solid black;
-    border-radius: 50%;
-    border-left: 2px solid white;
-    animation: ${rotate} 0.8s linear infinite;
+    padding-bottom: calc(${navitemHeight} / 2);
 `
 
 const Row = styled.div`
@@ -51,7 +32,7 @@ const Row = styled.div`
     justify-content: space-between;
     align-items: center;
     text-align: center;
-    height: min(10%, 40px);
+    min-height: min(10%, 40px);
     padding: min(10%, 5px);
     font-family: Arial, Helvetica, sans-serif;
     font-style: normal;
@@ -115,10 +96,7 @@ export const Gallery = () => {
                             <div>{image.patientName}</div>
                             <div>{image.updatedAt.toISOString()}</div>
                             <div 
-                                style={{
-                                    height: "90%",
-                                    width: ""
-                                }}
+                                style={{ height: "90%" }}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setImageToDelete(image);

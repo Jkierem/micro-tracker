@@ -8,6 +8,8 @@ import { Schema } from "@effect/schema";
 import { HttpError } from "../adapters/http.adapter";
 import { SerializeError, VideoService } from "./video.service";
 import { NoSuchElementException } from "effect/Cause";
+import { Offset } from "../support/render/canvas";
+import { ModelResult } from "../adapters/workers/messages";
 
 export class NullCanvasError
 extends Data.TaggedError("NullCanvasError") {}
@@ -42,7 +44,7 @@ export declare namespace ImageLoader {
     type Snapshot = VideoService.Snapshot;
 
     type ImageState = Option.Option<{
-        dimensions: ImageRepo.Dimensions,
+        dimensions: ImageRepo.Dimensions & Offset,
         fileType: ImageRepo.FileType,
         raw: ArrayBuffer,
         current: number,
@@ -51,6 +53,7 @@ export declare namespace ImageLoader {
     
     type ImageController = {
         render: (file: FileContainer) => Effect.Effect<void, LoadError>,
+        renderParasites: (data: ModelResult) => Effect.Effect<void, RenderError | CanvasContextError>; 
         clear: () => Effect.Effect<void, ClearError>;
         update: (fn: (prev: ImageState) => ImageState) => Effect.Effect<void, UpdateError>;
         takeSnapshot: () => Effect.Effect<Snapshot, SnapshotError>;
@@ -104,13 +107,35 @@ extends Context.Tag("@service/image-loader")<
                     Effect.map(({ canvas, ctx }) => [canvas, ctx] as const)
                 )
 
+                const JustContext = pipe(
+                    CanvasContex,
+                    Effect.map(([_, ctx]) => ctx)
+                )
+
                 const controller: ImageLoader.ImageController = {
+                    renderParasites(data) {
+                        return Effect.gen(function*(_){
+                            if( current._tag === "Some" ){
+                                const ctx = yield* JustContext
+                                const { dimensions: { xOffset, yOffset } } = current.value;
+                                ctx.strokeStyle = "#00ff00";
+                                ctx.lineWidth = 5;
+                                ctx.beginPath()
+                                data.parasite.forEach(box => {
+                                    ctx.rect(box.x + xOffset, box.y + yOffset, box.w, box.h);
+                                })
+                                ctx.stroke();
+                            } else {
+                                return yield* new RenderError({ error: Error("No Image Rendered")})
+                            }
+                        })
+                    },
                     render({ data, type: fileType }) {
                         return this.clear().pipe(
                             Effect.flatMap(() => {
                                 return Effect.gen(function*(_){
                                     let slices = []
-                                    let dimensions: ImageRepo.Dimensions;
+                                    let dimensions: ImageRepo.Dimensions & Offset;
                                     const [canvas, ctx] = yield* CanvasContex;
                                     if( fileType === "image/tiff" ){
                                         const ifds = yield* tiff.decode(data.buffer);

@@ -1,6 +1,7 @@
 import { Data } from "effect";
 import { FileContainer } from "../../services/image-loader.service";
 import { ImageRepo } from "../../adapters/image.repository";
+import { JobRepo } from "../../adapters/job.repository";
 
 export type VisualizerData = Data.TaggedEnum<{
     File: { file: FileContainer },
@@ -18,7 +19,7 @@ export type View = Data.TaggedEnum<{
     Visualizer: { data: VisualizerData },
     Gallery: {},
     Reports: {},
-    Report: {},
+    Report: { data: JobRepo.JobId },
 }>
 
 const { Login, Main, Camera, Capture, Visualizer, Gallery, Reports, Report, $is } = Data.taggedEnum<View>();

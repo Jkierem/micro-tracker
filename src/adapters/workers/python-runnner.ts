@@ -1,6 +1,7 @@
 import { loadPyodide } from "pyodide";
-import { Ready, Result } from "./messages";
+import { PythonIncomingMessage, Ready, Result, Started } from "./messages";
 import { ImageRepo } from "../image.repository";
+import { Option } from "effect";
 
 class Interpolator {
     private interpolations: Record<string, string>;
@@ -25,24 +26,21 @@ const pretrained = await fetch(`/${PRETRAINED_PATH}`)
 const modelScript = await fetch("/model.py")
     .then(req => req.text())
 
+let result = Option.none<string>();
 const Python = await loadPyodide({
     indexURL: "/pyodide-mini",
-    stdout: console.log,
+    stdout: (answer) => {
+        result = Option.some(answer);
+    },
     stderr: console.error,
 })
 
 Python.FS.writeFile(PRETRAINED_PATH, pretrained);
 await Python.loadPackagesFromImports(modelScript);
 
-self.postMessage(new Ready)
-
-self.onmessage = (e: MessageEvent<{ image: ImageRepo.Image }>) => {
-    const { image } = e.data;
+self.onmessage = async (e: MessageEvent<PythonIncomingMessage>) => {
+    const { image, jobId } = e.data;
     const INPUT_PATH = ImageRepo.Utils.getFilePath(image);
-    console.group("Python");
-    console.log("Event: ", e);
-    console.log("File Path:", INPUT_PATH);
-    console.groupEnd();
 
     const env = new Interpolator({
         PRETRAINED_PATH,
@@ -50,8 +48,20 @@ self.onmessage = (e: MessageEvent<{ image: ImageRepo.Image }>) => {
     })
 
     Python.FS.writeFile(INPUT_PATH, image.data);
-    
-    Python.runPython(env.interpolate(modelScript));
 
-    self.postMessage(new Result({ data: { parasite: [] }}));
+    self.postMessage(new Started({ jobId }))
+    
+    await Python.runPythonAsync(env.interpolate(modelScript));
+
+    if( Option.isSome(result) ){
+        const value = result.value;
+        const data = JSON.parse(value);
+        self.postMessage(new Result({
+            data,
+            jobId,
+        }));
+    }
+    result = Option.none();
 }
+
+self.postMessage(new Ready)
