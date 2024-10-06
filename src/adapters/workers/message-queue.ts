@@ -7,6 +7,7 @@ import { IDBKey } from "../indexed-db/indexed-db.support";
 import PythonRunner from "./python-runnner?worker";
 import { ImageRepo } from "../image.repository";
 import { JobQueue } from "./job-queue";
+import { ModelResultRepo } from "../model-result.repository";
 
 export class Waiting
 extends Data.TaggedClass("Waiting") {}
@@ -53,16 +54,14 @@ class WorkerTracker {
     }
 }
 
-const jobRepo =  await pipe(
-    JobRepo,
+const [jobRepo, imageRepo, modelResultRepo] = await pipe(
+    Effect.all([
+        JobRepo,
+        ImageRepo,
+        ModelResultRepo,
+    ]),
+    Effect.provide(ModelResultRepo.Live),
     Effect.provide(JobRepo.Live),
-    Effect.provide(IndexedDBAdapter.Live),
-    Effect.provide(DOMAdapter.Live),
-    Effect.runPromise
-)
-
-const imageRepo = await pipe(
-    ImageRepo,
     Effect.provide(ImageRepo.Live),
     Effect.provide(IndexedDBAdapter.Live),
     Effect.provide(DOMAdapter.Live),
@@ -94,8 +93,13 @@ const onPythonReady = () => Effect.gen(function*(){
     yield* checkQueue();
 })
 
-const onFinishJob = ({ jobId, data }: Result) => Effect.gen(function*(){
-    yield* queue.finish(jobId, data);
+const onFinishJob = ({ jobId, image, detection }: Result) => Effect.gen(function*(){
+    const modelResult = yield* modelResultRepo.create({
+        detection,
+        image,
+        jobId: IDBKey.fromNumber(jobId),
+    })
+    yield* queue.finish(jobId, modelResult.id);
     WorkerTracker.free();
     yield* checkQueue()
 })
@@ -107,7 +111,8 @@ const onStartJob = (jobId: number) => Effect.gen(function*(){
 })
 
 const onRequestJob = (imageId: number) => Effect.gen(function*(_){
-    yield* queue.schedule(imageId)
+    const image = yield* imageRepo.read(IDBKey.fromNumber(imageId));
+    yield* queue.schedule(image)
     yield* checkQueue()
 })
 
@@ -123,7 +128,11 @@ const PythonMessageSink = async (e: MessageEvent<PythonOutgoingMessage>) => {
             await onPythonReady().pipe(Effect.runPromise);
             break;
         case "Result":
-            await onFinishJob(e.data).pipe(Effect.runPromise);
+            const res = e.data;
+            await onFinishJob(res).pipe(
+                Effect.catchAll(() => onFailedJob(res.jobId)),
+                Effect.runPromise
+            );
             break;
         case "Started":
             await onStartJob(e.data.jobId).pipe(Effect.runPromise)
@@ -134,7 +143,7 @@ const PythonMessageSink = async (e: MessageEvent<PythonOutgoingMessage>) => {
     }
 }
 
-pythonWorker?.addEventListener("message", PythonMessageSink);
+pythonWorker.addEventListener("message", PythonMessageSink);
 
 const MessageQueueSink = async (e: MessageEvent<QueueIncomingMessage>) => {
     switch(e.data._tag){
@@ -142,6 +151,10 @@ const MessageQueueSink = async (e: MessageEvent<QueueIncomingMessage>) => {
             await onRequestJob(e.data.imageId).pipe(Effect.runPromise);
             break;
         case "RequestSync":
+            self.postMessage(queue.sync().pipe(Effect.runSync));
+            break;
+        case "DeleteJob":
+            queue.delete(e.data.jobId);
             self.postMessage(queue.sync().pipe(Effect.runSync));
             break;
     }

@@ -34,6 +34,14 @@ export const FileVisualizer = ({ file }: { file: FileContainer }) => {
         ]).pipe(Effect.runPromise)
     }
 
+    const handleDiscard = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        Effect.all([
+            controller.clear(),
+            router.goBack()
+        ]).pipe(Effect.runPromise)
+    }
+
     return <ViewBase action={menuOpen ? "close" : "menu"} onAction={() => setMenuOpen(a => !a)}>
         <SaveSnapshotModal
             candidate={candidate}
@@ -42,8 +50,7 @@ export const FileVisualizer = ({ file }: { file: FileContainer }) => {
         />
         <Menu open={menuOpen} setOpen={setMenuOpen} >
             <div onClick={handlePickSlice}>Guardar{` `}{file.type === "image/tiff" ? "Corte": "Imagen"}...</div>
-            <div>Procesar</div>
-            <div>Descartar</div>
+            <div onClick={handleDiscard}>Descartar</div>
         </Menu>
         {file.type === "image/tiff"
             ? <TiffViewer

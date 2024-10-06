@@ -2,6 +2,7 @@ import { Effect, Option, pipe } from "effect";
 import { JobRepo } from "../job.repository";
 import { IDBKey } from "../indexed-db/indexed-db.support";
 import { Sync } from "./messages";
+import { ImageRepo } from "../image.repository";
 
 export class JobQueueView {
     private jobs: Option.Option<JobRepo.Jobs>;
@@ -28,6 +29,13 @@ export class JobQueueView {
 
     getJobs(){
         return this.jobs;
+    }
+
+    delete(jobId: number){
+        if( Option.isSome(this.jobs) ){
+            this.jobs = Option.some(this.jobs.value.filter(job => job.id !== jobId));
+            this.listener?.(this.clone());
+        }
     }
 
     watch(listener: (self: JobQueueView) => void){
@@ -76,11 +84,11 @@ export class JobQueue {
         }))
     }
 
-    finish(jobId: number, result: JobRepo.ModelResult){
+    finish(jobId: number, result: number){
         return this.updateJob(jobId, (prev) => ({
             ...prev,
             state: "finished" as const,
-            result: Option.some(result)
+            result: Option.some(IDBKey.fromNumber(result))
         }))
     }
 
@@ -92,15 +100,21 @@ export class JobQueue {
         }))
     }
 
-    schedule(imageId: number){
+    schedule(image: ImageRepo.Image){
         return Effect.gen(this, function*(_){
             const job = yield* this.repo.create({
-                imageId: IDBKey.fromNumber(imageId),
+                imageId: image.id,
+                imageName: image.imageName,
+                patientName: image.patientName,
                 result: Option.none(),
                 state: "waiting"
             })
             this.jobs.push(job);
         })
+    }
+
+    delete(jobId: number){
+        this.jobs = this.jobs.filter(job => job.id !== jobId);
     }
 
     sync(){

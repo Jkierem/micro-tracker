@@ -13,6 +13,11 @@ export const MicroTrackerV1 = IndexedDB.make(
             keyPath: "id",
             autoIncrement: true,
             indexes: ["imageId"]
+        },
+        results: {
+            keyPath: "id",
+            autoIncrement: true,
+            indexes: ["jobId"]
         }
     }
 )

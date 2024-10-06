@@ -1,6 +1,10 @@
 import { loadPyodide } from "pyodide";
 import { JobError, PythonIncomingMessage, Ready, Result, Started } from "./messages";
 import { ImageRepo } from "../image.repository";
+import { ModelResultRepo } from "../model-result.repository";
+
+// This flag disables printing the error messages received from python
+const SUPPRESS_PYTHON_WARININGS = true;
 
 class Interpolator {
     private interpolations: Record<string, string>;
@@ -25,10 +29,17 @@ const pretrained = await fetch(`/${PRETRAINED_PATH}`)
 const modelScript = await fetch("/model.py")
     .then(req => req.text())
 
+let detection = [] as ModelResultRepo.ModelResult['detection'];
 const Python = await loadPyodide({
     indexURL: "/pyodide-mini",
-    stdout: console.log,
-    stderr: console.error,
+    stdout: (data) => {
+        detection = (JSON.parse(data) as { parasite: ModelResultRepo.ModelResult['detection'] }).parasite;
+    },
+    stderr: (...args) => {
+        if( !SUPPRESS_PYTHON_WARININGS ){
+            console.error(...args);
+        }
+    },
 })
 
 Python.FS.writeFile(PRETRAINED_PATH, pretrained);
@@ -52,13 +63,16 @@ self.onmessage = async (e: MessageEvent<PythonIncomingMessage>) => {
     await Python.runPythonAsync(env.interpolate(modelScript));
 
     try {
-        const data = Python.FS.readFile(OUTPUT_PATH) as Uint8Array;
+        const image = Python.FS.readFile(OUTPUT_PATH) as Uint8Array;
         self.postMessage(new Result({
-            data,
+            image,
+            detection,
             jobId,
-        }), { transfer: [data.buffer]});
+        }), { transfer: [image.buffer]});
     } catch {
         self.postMessage(new JobError({ jobId }))
+    } finally {
+        detection = [];
     }
 }
 

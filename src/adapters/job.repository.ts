@@ -10,20 +10,18 @@ export const JobState = Schema.Union(
     Schema.Literal("finished"),
     Schema.Literal("error"),
 )
-
-export const ModelResult = Schema.Uint8ArrayFromSelf
-
 const Job = IDBValue(Schema.Struct({
     state: JobState,
     imageId: IDBKeySchema,
-    result: Schema.Option(ModelResult),
+    imageName: Schema.String,
+    patientName: Schema.String,
+    result: Schema.Option(IDBKeySchema),
 }))
 
 const Jobs = Schema.Array(Job);
 
 export declare namespace JobRepo {
     type JobState = Schema.Schema.Type<typeof JobState>;
-    type ModelResult = Schema.Schema.Type<typeof ModelResult>;
     type Job = Schema.Schema.Type<typeof Job>;
     type Jobs = Schema.Schema.Type<typeof Jobs>;
     type EncodedJobs = Schema.Schema.Encoded<typeof Jobs>;
@@ -38,7 +36,7 @@ export declare namespace JobRepo {
 }
 
 export class JobRepo
-extends Context.Tag("ImageRepo")<
+extends Context.Tag("JobRepo")<
     JobRepo,
     JobRepo.Shape
 >() {

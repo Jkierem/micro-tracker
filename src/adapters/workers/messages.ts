@@ -2,10 +2,12 @@ import { Data } from "effect";
 import { JobRepo } from "../job.repository";
 import { ImageRepo } from "../image.repository";
 
-export type ModelResult = Uint8Array
-
 export class Result
-extends Data.TaggedClass("Result")<{ data: ModelResult, jobId: number }> {}
+extends Data.TaggedClass("Result")<{ 
+    image: Uint8Array, 
+    detection: readonly Record<"x"|"y"|"w"|"h", number>[],
+    jobId: number 
+}> {}
 
 export class Started
 extends Data.TaggedClass("Started")<{ jobId: number }> {}
@@ -37,9 +39,13 @@ extends Data.TaggedClass("Sync")<{ data: JobRepo.EncodedJobs }>{}
 export class RequestSync
 extends Data.TaggedClass("RequestSync"){}
 
+export class DeleteJob
+extends Data.TaggedClass("DeleteJob")<{ jobId: number }>{}
+
 export type QueueIncomingMessage = 
     | RequestJob
     | RequestSync
+    | DeleteJob
 
 export type QueueOutgoingMessage = 
     | Sync

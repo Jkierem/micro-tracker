@@ -9,6 +9,7 @@ import { VisualizerDataTypes } from "../../../support/routing/views";
 import { DeleteImageModal } from "../../delete-image-modal/delete-image-modal";
 import { Icon } from "../../icon/icon";
 import { Loader } from "../../loader/loader";
+import { formatDate } from "../../../support/optics/date-formatter";
 
 const Content = styled.div`
     width: 100%;
@@ -92,11 +93,11 @@ export const Gallery = () => {
                 Match.tag("Success", ({ data }) => {
                     return data.map((image, idx) => {
                         return <Row key={`${image.id}+${idx}`} onClick={handleOpenImage(image)}>
-                            <div>{image.imageName}</div>
+                            <div style={{ marginLeft: "16px" }}>{image.imageName}</div>
                             <div>{image.patientName}</div>
-                            <div>{image.updatedAt.toISOString()}</div>
+                            <div>{formatDate(image.updatedAt)}</div>
                             <div 
-                                style={{ height: "90%" }}
+                                style={{ height: "30%", position: "relative", marginRight: "16px" }}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setImageToDelete(image);

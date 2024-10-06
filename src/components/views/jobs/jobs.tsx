@@ -1,4 +1,4 @@
-import { Match, Option, pipe } from "effect";
+import { Match, pipe } from "effect";
 import { Services } from "../../services-provider/services.provider"
 import { navitemHeight, ViewBase } from "../../view-base/view-base"
 import styled from "styled-components";
@@ -62,24 +62,12 @@ export const JobStateTag = ({ state }: { state: JobRepo.JobState }) => {
 }
 
 const JobRow = ({ job, onSelect }: { job: JobRepo.Job, onSelect: (id: JobRepo.JobId) => void }) => {
-    const { images } = Services.use();
-
-    const [image] = images.useImage(() => Option.some({ id: job.imageId }), [job.imageId]);
-
-    if( image._tag === "Loading" ){
-        return <div>Loading...</div>;
-    }
-
-    if( image._tag === "Error" ){
-        return <div>Error fetching image data for imageId {job.imageId}</div>
-    }
-
     return <Row key={job.id} onClick={e => {
         e.stopPropagation()
         onSelect(job.id);
     }}>
-        <div>Image: {image.data.imageName}</div>
-        <div>Patient: {image.data.patientName}</div>
+        <div>Image: {job.imageName}</div>
+        <div>Patient: {job.patientName}</div>
         <div>{capitalize(job.state)}</div>
         <JobStateTag state={job.state}/>
     </Row>

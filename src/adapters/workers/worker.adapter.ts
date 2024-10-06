@@ -1,10 +1,13 @@
 import { Effect, Data, Context, Layer, pipe, Ref, Option } from "effect"
 import MessageQueue from "./message-queue?worker";
 import { JobQueueView } from "./job-queue";
-import { QueueOutgoingMessage, RequestJob, RequestSync } from "./messages";
+import { DeleteJob, QueueOutgoingMessage, RequestJob, RequestSync } from "./messages";
 import { useEffect, useState } from "react";
 import { JobRepo } from "../job.repository";
 import { Resource } from "../../support/effect";
+import { ModelResultRepo } from "../model-result.repository";
+import { IDBKey } from "../indexed-db/indexed-db.support";
+import { DeleteError } from "../indexed-db/crud";
 
 export class WorkerNotReady
 extends Data.TaggedError("WorkerNotReady") {}
@@ -17,6 +20,11 @@ export declare namespace WorkerAdapter {
     type Shape = {
         sync(): void;
         schedule(imageId: number): Effect.Effect<JobRequested, WorkerNotReady>;
+        getJobResult: (id: IDBKey) => Effect.Effect<
+            ModelResultRepo.Get.Single.Success, 
+            ModelResultRepo.Get.Single.Error
+        >;
+        deleteJob: (job: JobRepo.Job) => Effect.Effect<void, DeleteError>;
         useQueueView: () => [JobQueueView]
         useJobView: (jobId: JobRepo.JobId) => [Resource.Resource<
             JobRepo.Job,
@@ -31,6 +39,8 @@ extends Context.Tag("WorkerAdapter")<
     WorkerAdapter.Shape
 >(){
     static Live = Layer.effect(WorkerAdapter, Effect.gen(function*(_){
+        const resultRepo = yield* ModelResultRepo;
+        const jobRepo = yield* JobRepo;
         const queue = yield* Ref.make(new JobQueueView());
 
         const worker = new MessageQueue();
@@ -52,6 +62,17 @@ extends Context.Tag("WorkerAdapter")<
         }
 
         return WorkerAdapter.of({
+            deleteJob(job) {
+                return Effect.gen(function*(_){
+                    if( Option.isSome(job.result) ){
+                        yield* resultRepo.delete(job.result.value);
+                    }
+                    yield* jobRepo.delete(job.id);
+                    const q = yield* queue.get;
+                    q.delete(job.id);
+                    worker.postMessage(new DeleteJob({ jobId: job.id }));
+                })
+            },
             sync(){
                 worker.postMessage(new RequestSync())
             },
@@ -64,6 +85,9 @@ extends Context.Tag("WorkerAdapter")<
                     worker.postMessage(new RequestJob({ imageId }))
                     return new JobRequested();
                 })
+            },
+            getJobResult(id) {
+                return resultRepo.read(id);
             },
             useJobView(jobId) {
                 const [queue] = this.useQueueView();

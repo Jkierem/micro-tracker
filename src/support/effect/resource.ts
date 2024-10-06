@@ -1,4 +1,4 @@
-import { Data, Effect, Match, Option, pipe, Resource } from 'effect';
+import { Data, Effect, Either, Match, Option, pipe, Resource } from 'effect';
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 
 class ResourceLoading extends Data.TaggedClass('Loading') {}
@@ -10,6 +10,10 @@ export const Loading = () => new ResourceLoading();
 export const Success = <A>(data: A) => new ResourceSuccess({ data });
 export const Error = <E>(error: E) => new ResourceError({ error });
 
+export const isLoading = <A,E>(r: Resource<A,E>): r is ResourceLoading => r._tag === "Loading"
+export const isSuccess = <A,E>(r: Resource<A,E>): r is ResourceSuccess<A> => r._tag === "Success"
+export const isError = <A,E>(r: Resource<A,E>): r is ResourceError<E> => r._tag === "Error"
+
 export const getSuccess = <A, E>(resource: Resource<A, E>): Option.Option<A> =>
   pipe(
     resource,
@@ -17,6 +21,12 @@ export const getSuccess = <A, E>(resource: Resource<A, E>): Option.Option<A> =>
     Match.tag('Success', ({ data }) => Option.some(data)),
     Match.orElse(() => Option.none()),
   );
+
+export const getSuccessOrUndefined = <A,E>(self: Resource<A, E>) => pipe(
+  self,
+  getSuccess,
+  Option.getOrUndefined
+)
 
 export const getOrElse =
   <A, E>(orElse: () => A) =>
@@ -270,3 +280,10 @@ export const recover =
       catchAll((e) => Success(fn(e))),
     );
   };
+
+export const either = <A,E>(self: Resource<A, E>): Resource<Either.Either<A, E>, never> => pipe(
+  Match.value(self),
+  Match.tag("Error", ({ error }) => Success(Either.left(error))),
+  Match.tag("Success", ({ data }) => Success(Either.right(data))),
+  Match.orElse(_ => _)
+)

@@ -17,6 +17,8 @@ import { inject } from "../../support/effect/component"
 import { FileService } from "../../services/file.service"
 import { UrlAdapter } from "../../adapters/url.adapter"
 import { WorkerAdapter } from "../../adapters/workers/worker.adapter"
+import { ModelResultRepo } from "../../adapters/model-result.repository"
+import { JobRepo } from "../../adapters/job.repository"
 
 export declare namespace Services {
     type Shape = {
@@ -61,8 +63,11 @@ extends Context.Tag("@providers/main")<
     .pipe(Layer.provide(IndexedDBAdapter.Live))
     .pipe(Layer.provide(HttpAdapter.Live))
     .pipe(Layer.provide(NavigatorAdapter.Live))
-    .pipe(Layer.provide(DOMAdapter.Live))
     .pipe(Layer.provide(WorkerAdapter.Live))
+    .pipe(Layer.provide(ModelResultRepo.Live))
+    .pipe(Layer.provide(JobRepo.Live))
+    .pipe(Layer.provide(IndexedDBAdapter.Live))
+    .pipe(Layer.provide(DOMAdapter.Live))
 }
 
 export const ServicesProvider = pipe(
