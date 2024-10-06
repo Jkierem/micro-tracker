@@ -466,8 +466,7 @@ def analyze(filepath, output=None):
     out, results = detectParasites(img_pad, newImgSeg, svmModel)
 
     # Imagen de salida
-    if output is not None:
-        cv2.imwrite(output, out)
+    cv2.imwrite(__OUTPUT_PATH__, out)
 
     # 5. Put the element in the dictionary
     return {ELEMENT_NAME: results}

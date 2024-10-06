@@ -85,7 +85,7 @@ const checkQueue = () => {
                 jobId: nextInQueue.value.id,
             }), [image.data.buffer])
         }
-        self.postMessage(queue.sync());
+        self.postMessage(queue.sync().pipe(Effect.runSync));
     })
 }
 
@@ -103,15 +103,19 @@ const onFinishJob = ({ jobId, data }: Result) => Effect.gen(function*(){
 const onStartJob = (jobId: number) => Effect.gen(function*(){
     yield* queue.start(jobId);
     WorkerTracker.lock(jobId);
-    self.postMessage(queue.sync());
+    self.postMessage(queue.sync().pipe(Effect.runSync));
 })
 
-const onRequestJob = (imageId: number) => {
-    return Effect.gen(function*(_){
-        yield* queue.schedule(imageId)
-        yield* checkQueue()
-    })
-}
+const onRequestJob = (imageId: number) => Effect.gen(function*(_){
+    yield* queue.schedule(imageId)
+    yield* checkQueue()
+})
+
+const onFailedJob = (jobId: number) => Effect.gen(function*(_){
+    yield* queue.error(jobId)
+    WorkerTracker.free();
+    yield* checkQueue()
+})
 
 const PythonMessageSink = async (e: MessageEvent<PythonOutgoingMessage>) => {
     switch(e.data._tag){
@@ -124,7 +128,8 @@ const PythonMessageSink = async (e: MessageEvent<PythonOutgoingMessage>) => {
         case "Started":
             await onStartJob(e.data.jobId).pipe(Effect.runPromise)
             break;
-        case "Error":
+        case "JobError":
+            await onFailedJob(e.data.jobId).pipe(Effect.runPromise)
             break;
     }
 }
@@ -137,11 +142,11 @@ const MessageQueueSink = async (e: MessageEvent<QueueIncomingMessage>) => {
             await onRequestJob(e.data.imageId).pipe(Effect.runPromise);
             break;
         case "RequestSync":
-            self.postMessage(queue.sync());
+            self.postMessage(queue.sync().pipe(Effect.runSync));
             break;
     }
 }
 
 self.addEventListener("message", MessageQueueSink);
 
-self.postMessage(queue.sync());
+self.postMessage(queue.sync().pipe(Effect.runSync));

@@ -41,7 +41,8 @@ extends Context.Tag("WorkerAdapter")<
                     pipe(
                         queue,
                         Ref.update((prev) => {
-                            prev.sync(e.data.data)
+                            const data = JobRepo.decodeJobs(e.data.data).pipe(Effect.runSync);
+                            prev.sync(data);
                             return prev;
                         }),
                         Effect.runSync

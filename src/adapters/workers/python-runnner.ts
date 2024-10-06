@@ -1,7 +1,6 @@
 import { loadPyodide } from "pyodide";
-import { PythonIncomingMessage, Ready, Result, Started } from "./messages";
+import { JobError, PythonIncomingMessage, Ready, Result, Started } from "./messages";
 import { ImageRepo } from "../image.repository";
-import { Option } from "effect";
 
 class Interpolator {
     private interpolations: Record<string, string>;
@@ -26,12 +25,9 @@ const pretrained = await fetch(`/${PRETRAINED_PATH}`)
 const modelScript = await fetch("/model.py")
     .then(req => req.text())
 
-let result = Option.none<string>();
 const Python = await loadPyodide({
     indexURL: "/pyodide-mini",
-    stdout: (answer) => {
-        result = Option.some(answer);
-    },
+    stdout: console.log,
     stderr: console.error,
 })
 
@@ -41,10 +37,12 @@ await Python.loadPackagesFromImports(modelScript);
 self.onmessage = async (e: MessageEvent<PythonIncomingMessage>) => {
     const { image, jobId } = e.data;
     const INPUT_PATH = ImageRepo.Utils.getFilePath(image);
+    const OUTPUT_PATH = `${jobId}-results.png`;
 
     const env = new Interpolator({
         PRETRAINED_PATH,
-        INPUT_PATH
+        INPUT_PATH,
+        OUTPUT_PATH,
     })
 
     Python.FS.writeFile(INPUT_PATH, image.data);
@@ -53,15 +51,15 @@ self.onmessage = async (e: MessageEvent<PythonIncomingMessage>) => {
     
     await Python.runPythonAsync(env.interpolate(modelScript));
 
-    if( Option.isSome(result) ){
-        const value = result.value;
-        const data = JSON.parse(value);
+    try {
+        const data = Python.FS.readFile(OUTPUT_PATH) as Uint8Array;
         self.postMessage(new Result({
             data,
             jobId,
-        }));
+        }), { transfer: [data.buffer]});
+    } catch {
+        self.postMessage(new JobError({ jobId }))
     }
-    result = Option.none();
 }
 
 self.postMessage(new Ready)

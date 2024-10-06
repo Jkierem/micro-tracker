@@ -1,5 +1,5 @@
-import { Effect, Match, pipe } from "effect";
-import { useEffect } from "react";
+import { Effect, Match, Option, pipe } from "effect";
+import { useEffect, useMemo, useRef } from "react";
 import styled from "styled-components";
 import { JobRepo } from "../../../adapters/job.repository";
 import { Services } from "../../services-provider/services.provider";
@@ -9,7 +9,6 @@ import { Loader } from "../../loader/loader";
 import { FileContainer } from "../../../services/image-loader.service";
 import { JobStateTag } from "../jobs/jobs";
 import { capitalize } from "effect/String";
-import { ModelResult } from "../../../adapters/workers/messages";
 
 const Content = styled.div`
     width: 100%;
@@ -53,8 +52,8 @@ const Box = styled.div`
 
 export const Job = ({ jobId }: { jobId: JobRepo.JobId }) => {
     const { worker, images, loader } = Services.use();
-
-    const [canvasRef, imageState, imageController] = loader.useImageRenderer();
+    const renderingRef = useRef("initial" as "initial" | "input" | "result");
+    const [canvasRef, _, imageController] = loader.useImageRenderer();
 
     const [jobResource] = worker.useJobView(jobId);
 
@@ -64,35 +63,37 @@ export const Job = ({ jobId }: { jobId: JobRepo.JobId }) => {
             Resource.map(job => ({ id: job.imageId })),
             Resource.toOption
         )
-    }, [jobResource])
+    }, [jobResource]);
 
-    const resources = Resource.all({
+    const resources = useMemo(() => Resource.all({
         job: jobResource,
         image: imageResource,
-    })
+    }),[jobResource, imageResource])
 
     useEffect(() => {
         pipe(
-            imageResource,
-            Resource.tap((image) => {
-                if( imageState._tag === "None" ){
-                    Effect.runPromise(imageController.render(FileContainer.fromImage(image)));
+            resources,
+            Resource.tap(({ image, job }) => {
+                switch(job.state){
+                    case "waiting":
+                    case "running":
+                    case "error":
+                        if(  renderingRef.current === "initial" ){
+                            renderingRef.current = "input";
+                            Effect.runPromise(imageController.render(FileContainer.fromImage(image)));
+                        }
+                        break;
+                    case "finished":
+                        if( renderingRef.current !== "result" ){
+                            renderingRef.current = "result";
+                            const data = Option.getOrThrow(job.result);
+                            Effect.runPromise(imageController.render({ data, type: "image/png"}));
+                        }
+                        break;
                 }
             })
         )
-    }, [imageResource, imageState])
-
-    useEffect(() => {
-        pipe(
-            jobResource,
-            Resource.tap(job => {
-                if( "value" in job.result && imageState._tag === "Some" ){
-                    const modelResult = job.result.value as ModelResult;
-                    Effect.runPromise(imageController.renderParasites(modelResult));
-                }
-            })
-        )
-    },[jobResource, imageState])
+    }, [resources])
 
     return <ViewBase 
         tall

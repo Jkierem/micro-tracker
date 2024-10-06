@@ -4,7 +4,7 @@ import { IDBKey } from "../indexed-db/indexed-db.support";
 import { Sync } from "./messages";
 
 export class JobQueueView {
-    private jobs: Option.Option<JobRepo.Job[]>;
+    private jobs: Option.Option<JobRepo.Jobs>;
     private listener?: (self: JobQueueView) => void;
     constructor(){
         this.jobs = Option.none();
@@ -21,7 +21,7 @@ export class JobQueueView {
         return next;
     }
 
-    sync(jobs: JobRepo.Job[]){
+    sync(jobs: JobRepo.Jobs){
         this.jobs = Option.some(jobs);
         this.listener?.(this.clone());
     }
@@ -49,7 +49,9 @@ export class JobQueue {
     public fetchJobs(){
         return pipe(
             this.repo.readAll(),
-            Effect.andThen(jobs => { this.jobs = jobs }),
+            Effect.andThen(jobs => { 
+                this.jobs = jobs
+            }),
             Effect.catchAllCause(e => Effect.logError(e)),
         )
     }
@@ -102,7 +104,9 @@ export class JobQueue {
     }
 
     sync(){
-        return new Sync({ data: this.jobs });
+        return JobRepo.encodeJobs(this.jobs).pipe(
+            Effect.map(data => new Sync({ data }))
+        );
     }
 
     check(): Option.Option<JobRepo.Job> {

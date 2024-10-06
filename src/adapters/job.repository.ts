@@ -11,16 +11,7 @@ export const JobState = Schema.Union(
     Schema.Literal("error"),
 )
 
-export const BoxDef = Schema.Struct({
-    x: Schema.Number,
-    y: Schema.Number,
-    w: Schema.Number,
-    h: Schema.Number
-})
-
-export const ModelResult = Schema.Struct({
-    parasite: Schema.Array(BoxDef),
-})
+export const ModelResult = Schema.Uint8ArrayFromSelf
 
 const Job = IDBValue(Schema.Struct({
     state: JobState,
@@ -28,11 +19,14 @@ const Job = IDBValue(Schema.Struct({
     result: Schema.Option(ModelResult),
 }))
 
+const Jobs = Schema.Array(Job);
+
 export declare namespace JobRepo {
     type JobState = Schema.Schema.Type<typeof JobState>;
-    type BoxDef = Schema.Schema.Type<typeof BoxDef>;
     type ModelResult = Schema.Schema.Type<typeof ModelResult>;
     type Job = Schema.Schema.Type<typeof Job>;
+    type Jobs = Schema.Schema.Type<typeof Jobs>;
+    type EncodedJobs = Schema.Schema.Encoded<typeof Jobs>;
     type JobId = Job['id'];
 
     namespace Get.All {
@@ -48,6 +42,9 @@ extends Context.Tag("ImageRepo")<
     JobRepo,
     JobRepo.Shape
 >() {
+    static encodeJobs = Schema.encode(Jobs);
+    static decodeJobs = Schema.decode(Jobs);
+
     static Live = Layer.effect(JobRepo, Effect.gen(function*(_){
         const idb = yield* _(IndexedDBAdapter);
 

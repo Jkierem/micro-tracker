@@ -2,16 +2,7 @@ import { Data } from "effect";
 import { JobRepo } from "../job.repository";
 import { ImageRepo } from "../image.repository";
 
-export type BoxDef = {
-    x: number,
-    y: number,
-    w: number,
-    h: number
-}
-
-export type ModelResult = {
-    parasite: BoxDef[]
-}
+export type ModelResult = Uint8Array
 
 export class Result
 extends Data.TaggedClass("Result")<{ data: ModelResult, jobId: number }> {}
@@ -19,8 +10,8 @@ extends Data.TaggedClass("Result")<{ data: ModelResult, jobId: number }> {}
 export class Started
 extends Data.TaggedClass("Started")<{ jobId: number }> {}
 
-export class Error
-extends Data.TaggedError("Error")<{ jobId: number }> {}
+export class JobError
+extends Data.TaggedError("JobError")<{ jobId: number }> {}
 
 export class Ready
 extends Data.TaggedClass("Ready")<{}> {}
@@ -32,7 +23,7 @@ export type PythonOutgoingMessage =
     | Ready
     | Result
     | Started
-    | Error 
+    | JobError 
 
 export type PythonIncomingMessage =
     | ScheduleJob
@@ -41,7 +32,7 @@ export class RequestJob
 extends Data.TaggedClass("RequestJob")<{ imageId: number }>{}
 
 export class Sync
-extends Data.TaggedClass("Sync")<{ data: JobRepo.Job[] }>{}
+extends Data.TaggedClass("Sync")<{ data: JobRepo.EncodedJobs }>{}
 
 export class RequestSync
 extends Data.TaggedClass("RequestSync"){}

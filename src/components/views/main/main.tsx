@@ -17,16 +17,11 @@ export const Main = () => {
         router.goToReports();
     }
 
-    const handleLogout = () => {
-        router.goToLogin();
-    }
-
     return <ViewBase>
         <IconButton.Group>
             <IconButton text="Captura" icon="camera" onClick={handleCamera}/>
             <IconButton text="Galeria" icon="gallery" onClick={handleGallery}/>
             <IconButton text="Reportes" icon="reports" onClick={handleReports}/>
-            <IconButton text="Cerrar Sesion" icon="logout" onClick={handleLogout}/>
         </IconButton.Group>
     </ViewBase>
 }
