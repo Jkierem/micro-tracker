@@ -3,4 +3,5 @@ export const ZLayer = {
     foreground: 1,
     modal: 2,
     navigation: 3,
+    update: 4,
 }

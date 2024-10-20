@@ -61,15 +61,15 @@ function PWABadge() {
       {needRefresh && (
         <PWA.Toast>
           <PWA.Message>
-            <span id="toast-message">A new version is available</span>
+            <span id="toast-message">Una nueva version esta disponible</span>
           </PWA.Message>
           <PWA.ToastButtons>
             { 
               needRefresh && <PWA.ToastButton onClick={() => updateServiceWorker(true)}>
-                Update
+                Actualizar
               </PWA.ToastButton> 
             }
-            <PWA.ToastButton onClick={() => close()}>Close</PWA.ToastButton>
+            <PWA.ToastButton onClick={() => close()}>Ignorar</PWA.ToastButton>
           </PWA.ToastButtons>
         </PWA.Toast>
       )}

@@ -1,10 +1,12 @@
 import styled from "styled-components";
+import { ZLayer } from "../../support/style/z-layer";
 
 export const Container = styled.div`
     padding: 0;
     margin: 0;
     width: 0;
     height: 0;
+    z-index: ${ZLayer.update};
 `
 
 export const Toast = styled.div`
