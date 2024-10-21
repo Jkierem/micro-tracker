@@ -3,5 +3,8 @@ export const formatDate = (date: Date) => {
     const month = (date.getMonth() + 1).toLocaleString().padStart(2, "0");
     const day = (date.getDate()).toLocaleString().padStart(2, "0");
 
-    return `${day}/${month}/${year} ${date.getHours()}:${date.getMinutes()}`;
+    const hours = `${date.getHours()}`.padStart(2, "0");
+    const minutes = `${date.getMinutes()}`.padStart(2, "0");
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
 } 
