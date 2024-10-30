@@ -1,7 +1,7 @@
 import { Effect, Data, Context, Layer, pipe, Ref, Option } from "effect"
 import MessageQueue from "./message-queue?worker";
 import { JobQueueView } from "./job-queue";
-import { DeleteJob, QueueOutgoingMessage, RequestJob, RequestSync } from "./messages";
+import { DeleteJob, QueueOutgoingMessage, RequestJob } from "./messages";
 import { useEffect, useState } from "react";
 import { JobRepo } from "../job.repository";
 import { Resource } from "../../support/effect";
@@ -18,7 +18,6 @@ extends Data.TaggedError("JobNotFound")<{ jobId: number }>{}
 
 export declare namespace WorkerAdapter {
     type Shape = {
-        sync(): void;
         schedule(imageId: number): Effect.Effect<JobRequested, WorkerNotReady>;
         getJobResult: (id: IDBKey) => Effect.Effect<
             ModelResultRepo.Get.Single.Success, 
@@ -72,9 +71,6 @@ extends Context.Tag("WorkerAdapter")<
                     q.delete(job.id);
                     worker.postMessage(new DeleteJob({ jobId: job.id }));
                 })
-            },
-            sync(){
-                worker.postMessage(new RequestSync())
             },
             schedule(imageId){
                 return Effect.gen(function*(_){

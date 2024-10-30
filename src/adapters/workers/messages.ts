@@ -13,7 +13,7 @@ export class Started
 extends Data.TaggedClass("Started")<{ jobId: number }> {}
 
 export class JobError
-extends Data.TaggedError("JobError")<{ jobId: number }> {}
+extends Data.TaggedClass("JobError")<{ jobId: number }> {}
 
 export class Ready
 extends Data.TaggedClass("Ready")<{}> {}

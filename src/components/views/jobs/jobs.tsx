@@ -74,7 +74,7 @@ const JobRow = ({ job, onSelect }: { job: JobRepo.Job, onSelect: (id: JobRepo.Jo
 }
 
 export const Jobs = () => {
-    const { worker, router  } = Services.use();
+    const { worker, router } = Services.use();
 
     const [jobView] = worker.useQueueView();
 
@@ -92,7 +92,7 @@ export const Jobs = () => {
                     return value.map(job => {
                         return <JobRow 
                             key={job.id} 
-                            job={job} 
+                            job={job}
                             onSelect={handleSelect}
                         />
                     })

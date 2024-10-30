@@ -5,6 +5,8 @@ import { ModelResultRepo } from "../model-result.repository";
 
 // This flag disables printing the error messages received from python
 const SUPPRESS_PYTHON_WARININGS = true;
+// Set to true to have python errors printed to console
+const LOG_PYTHON_ERRORS = false;
 
 class Interpolator {
     private interpolations: Record<string, string>;
@@ -60,16 +62,19 @@ self.onmessage = async (e: MessageEvent<PythonIncomingMessage>) => {
 
     self.postMessage(new Started({ jobId }))
     
-    await Python.runPythonAsync(env.interpolate(modelScript));
-
     try {
+        await Python.runPythonAsync(env.interpolate(modelScript));
+
         const image = Python.FS.readFile(OUTPUT_PATH) as Uint8Array;
         self.postMessage(new Result({
             image,
             detection,
             jobId,
         }), { transfer: [image.buffer]});
-    } catch {
+    } catch(e) {
+        if( LOG_PYTHON_ERRORS ){
+            console.error(e);
+        }
         self.postMessage(new JobError({ jobId }))
     } finally {
         detection = [];
