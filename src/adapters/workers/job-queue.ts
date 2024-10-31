@@ -1,4 +1,4 @@
-import { Effect, Option, pipe } from "effect";
+import { Effect, Option, Schedule, pipe } from "effect";
 import { JobRepo } from "../job.repository";
 import { IDBKey } from "../indexed-db/indexed-db.support";
 import { Sync } from "./messages";
@@ -52,6 +52,12 @@ export class JobQueue {
         private repo: JobRepo.Shape
     ){
         this.jobs = []
+    }
+
+    public retryPolicy(){
+        return Schedule.recurs(
+            this.jobs.filter(j => j.state !== "finished" && j.state !== "error").length
+        )
     }
 
     public fetchJobs(){

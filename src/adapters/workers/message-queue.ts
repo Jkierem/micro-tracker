@@ -1,4 +1,4 @@
-import { Data, Effect, Option, pipe } from "effect"
+import { Data, Effect, Either, Option, pipe } from "effect"
 import { PythonOutgoingMessage, QueueIncomingMessage, Result, ScheduleJob } from "./messages"
 import { JobRepo } from "../job.repository"
 import { IndexedDBAdapter } from "../indexed-db/index-db.adapter";
@@ -78,14 +78,21 @@ const checkQueue = () => {
     return Effect.gen(function*(_){
         const nextInQueue = queue.check();
         if( Option.isSome(nextInQueue) && WorkerTracker.isReady()){
-            const image = yield* imageRepo.read(IDBKey.fromNumber(nextInQueue.value.imageId));
-            pythonWorker.postMessage(new ScheduleJob({
-                image,
-                jobId: nextInQueue.value.id,
-            }), [image.data.buffer])
+            const imageEither = yield* imageRepo.read(IDBKey.fromNumber(nextInQueue.value.imageId))
+                .pipe(Effect.either);
+            if( Either.isLeft(imageEither) ){
+                yield* queue.error(nextInQueue.value.id).pipe(Effect.ignore);
+                yield* imageEither.left
+            } else {
+                const image = imageEither.right;
+                pythonWorker.postMessage(new ScheduleJob({
+                    image,
+                    jobId: nextInQueue.value.id,
+                }), [image.data.buffer])
+            }
         }
         self.postMessage(queue.sync().pipe(Effect.runSync));
-    })
+    }).pipe(Effect.retry(queue.retryPolicy()))
 }
 
 const onPythonReady = () => Effect.gen(function*(){
