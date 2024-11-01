@@ -27,3 +27,4 @@ dev-dist
 *Zone.Identifier
 
 .firebase/
+.env

@@ -8,6 +8,7 @@ import PythonRunner from "./python-runnner?worker";
 import { ImageRepo } from "../image.repository";
 import { JobQueue } from "./job-queue";
 import { ModelResultRepo } from "../model-result.repository";
+import { YieldWrap } from "effect/Utils";
 
 export class Waiting
 extends Data.TaggedClass("Waiting") {}
@@ -75,14 +76,15 @@ const queue = new JobQueue(jobRepo);
 await queue.fetchJobs().pipe(Effect.runPromise);
 
 const checkQueue = () => {
-    return Effect.gen(function*(_){
+    return Effect.gen(function*(): Generator<YieldWrap<Effect.Effect<void, never, never>>> {
         const nextInQueue = queue.check();
         if( Option.isSome(nextInQueue) && WorkerTracker.isReady()){
             const imageEither = yield* imageRepo.read(IDBKey.fromNumber(nextInQueue.value.imageId))
                 .pipe(Effect.either);
             if( Either.isLeft(imageEither) ){
-                yield* queue.error(nextInQueue.value.id).pipe(Effect.ignore);
-                yield* imageEither.left
+                yield* queue.error(nextInQueue.value.id)
+                    .pipe(Effect.ignore);
+                yield* checkQueue()
             } else {
                 const image = imageEither.right;
                 pythonWorker.postMessage(new ScheduleJob({
@@ -92,7 +94,7 @@ const checkQueue = () => {
             }
         }
         self.postMessage(queue.sync().pipe(Effect.runSync));
-    }).pipe(Effect.retry(queue.retryPolicy()))
+    })
 }
 
 const onPythonReady = () => Effect.gen(function*(){

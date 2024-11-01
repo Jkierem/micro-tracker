@@ -1,12 +1,19 @@
 import { loadPyodide } from "pyodide";
 import { JobError, PythonIncomingMessage, Ready, Result, Started } from "./messages";
 import { ImageRepo } from "../image.repository";
-import { ModelResultRepo } from "../model-result.repository";
+import { DetectionData } from "../model-result.repository";
+import { Schema } from "@effect/schema";
+import { Option } from "effect";
 
-// This flag disables printing the error messages received from python
-const SUPPRESS_PYTHON_WARININGS = true;
-// Set to true to have python errors printed to console
-const LOG_PYTHON_ERRORS = false;
+const readEnvFlag = (key: `VITE_SUPPRESS_PYTHON_${"WARNINGS" | "ERRORS"}`) => {
+    const value = import.meta.env[key]
+    return value === undefined 
+        ? import.meta.env.PROD 
+        : value.toLowerCase() === "true"
+}
+
+const SUPPRESS_PYTHON_WARNINGS = readEnvFlag("VITE_SUPPRESS_PYTHON_WARNINGS");
+const SUPPRESS_PYTHON_ERRORS = readEnvFlag("VITE_SUPPRESS_PYTHON_ERRORS");
 
 class Interpolator {
     private interpolations: Record<string, string>;
@@ -31,14 +38,22 @@ const pretrained = await fetch(`/${PRETRAINED_PATH}`)
 const modelScript = await fetch("/model.py")
     .then(req => req.text())
 
-let detection = [] as ModelResultRepo.ModelResult['detection'];
+
+const DetectionResult = Schema.Struct({
+    parasite: DetectionData
+})
+type DetectionResult = Schema.Schema.Type<typeof DetectionResult>;
+
+let detection = Option.none<DetectionResult>();
+const parseDetectionResult = Schema.decodeOption(Schema.parseJson(DetectionResult));
+
 const Python = await loadPyodide({
     indexURL: "/pyodide-mini",
     stdout: (data) => {
-        detection = (JSON.parse(data) as { parasite: ModelResultRepo.ModelResult['detection'] }).parasite;
+        detection = parseDetectionResult(data);
     },
     stderr: (...args) => {
-        if( !SUPPRESS_PYTHON_WARININGS ){
+        if( !SUPPRESS_PYTHON_WARNINGS ){
             console.error(...args);
         }
     },
@@ -64,20 +79,23 @@ self.onmessage = async (e: MessageEvent<PythonIncomingMessage>) => {
     
     try {
         await Python.runPythonAsync(env.interpolate(modelScript));
+        if( Option.isNone(detection) ){
+            throw new Error("No result or invalid result")
+        }
 
         const image = Python.FS.readFile(OUTPUT_PATH) as Uint8Array;
         self.postMessage(new Result({
             image,
-            detection,
+            detection: detection.value.parasite,
             jobId,
         }), { transfer: [image.buffer]});
     } catch(e) {
-        if( LOG_PYTHON_ERRORS ){
+        if( !SUPPRESS_PYTHON_ERRORS ){
             console.error(e);
         }
         self.postMessage(new JobError({ jobId }))
     } finally {
-        detection = [];
+        detection = Option.none();
     }
 }
 

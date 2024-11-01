@@ -4,7 +4,7 @@ import { IndexedDBAdapter } from "./indexed-db/index-db.adapter";
 import { MicroTrackerV1 } from "./indexed-db/databases/micro-tracker-v1";
 import { Schema } from "@effect/schema";
 
-const DetectionData = Schema.Array(Schema.Struct({
+export const DetectionData = Schema.Array(Schema.Struct({
     x: Schema.Number,
     y: Schema.Number,
     w: Schema.Number,
