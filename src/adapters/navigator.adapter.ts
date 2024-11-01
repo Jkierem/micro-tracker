@@ -32,7 +32,7 @@ extends Context.Tag("NavigatorAdapter")<
                     Option.map(media => {
                         return Effect.tryPromise({
                             try(){
-                                return media.getUserMedia({ video: true })
+                                return media.getUserMedia({ video: { facingMode: "environment" } })
                             },
                             catch(error) {
                                 return new UnsupportedVideoError({ error })
