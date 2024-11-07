@@ -4,12 +4,14 @@ import { IndexedDBAdapter } from "./indexed-db/index-db.adapter";
 import { MicroTrackerV1 } from "./indexed-db/databases/micro-tracker-v1";
 import { Schema } from "@effect/schema";
 
-export const DetectionData = Schema.Array(Schema.Struct({
+export const DetectionElement = Schema.Struct({
     x: Schema.Number,
     y: Schema.Number,
     w: Schema.Number,
     h: Schema.Number,
-}))
+})
+
+export const DetectionData = Schema.Array(DetectionElement);
 
 const ModelResult = IDBValue(Schema.Struct({
     jobId: IDBKeySchema,
