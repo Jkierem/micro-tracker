@@ -28,3 +28,7 @@ dev-dist
 
 .firebase/
 .env
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
