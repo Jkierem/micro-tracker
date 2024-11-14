@@ -52,7 +52,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'yarn dev --port 3000',
+    command: 'yarn preview --port 3000',
     timeout: 3000,
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,

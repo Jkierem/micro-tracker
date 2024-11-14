@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
-test("Offline works", async ({ page, context }) => {
+test("Offline works", async ({ page, context, baseURL }) => {
     test.setTimeout(200_000);
     await page.goto("/");
-    await page.waitForEvent('console', {
-        predicate: (message) => message.text().startsWith("Loaded")
-    })
+    const swURL = await page.evaluate(async () => {
+        const registration = await window.navigator.serviceWorker.ready;
+        return registration.active?.scriptURL;
+    });
+    expect(swURL).toBe(`${baseURL}/sw.js`);
     await context.setOffline(true);
 
     const captureButton = page.getByRole('button', { name: 'Captura' })
