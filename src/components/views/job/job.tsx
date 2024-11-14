@@ -12,7 +12,7 @@ import { capitalize } from "effect/String";
 import { useOptional } from "../../../support/effect/use-optional";
 import { ModelResultRepo } from "../../../adapters/model-result.repository";
 import { formatDate } from "../../../support/optics/date-formatter";
-import { DeleteJobModal } from "../../delete-job-modal /delete-job-modal";
+import { DeleteJobModal } from "../../delete-job-modal/delete-job-modal";
 
 const Content = styled.div`
     width: 100%;
