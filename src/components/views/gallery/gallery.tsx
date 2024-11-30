@@ -84,15 +84,17 @@ export const Gallery = () => {
             onCancel={() => setImageToDelete()}
             onDelete={handleDelete}
         />
-        <Content>
+        <Content data-testid="gallery">
             {pipe(
                 Match.value(imageList),
                 Match.tag("Loading", () => <Loader />),
-                Match.tag("Error", () => <p>Somehting Went Wrong</p>),
+                Match.tag("Error", () => {
+                    return <p>Something Went Wrong</p>
+                }),
                 Match.tag("Empty", () => <h1>-- No Images --</h1>),
                 Match.tag("Success", ({ data }) => {
                     return data.map((image, idx) => {
-                        return <Row key={`${image.id}+${idx}`} onClick={handleOpenImage(image)}>
+                        return <Row key={`${image.id}+${idx}`} data-testid="gallery-row" onClick={handleOpenImage(image)}>
                             <div style={{ marginLeft: "16px" }}>{image.imageName}</div>
                             <div>{image.patientName}</div>
                             <div>{formatDate(image.updatedAt)}</div>
