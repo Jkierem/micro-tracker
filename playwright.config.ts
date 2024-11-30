@@ -50,7 +50,7 @@ export default defineConfig({
     },
     {
       name: 'Mobile Safari',
-      use: { ...devices['iPhone 10'] },
+      use: { ...devices['iPhone X'] },
     },
   ],
   webServer: {
