@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: joblib
 Version: 1.4.0
 Summary: Lightweight pipelining with Python functions
@@ -26,6 +26,7 @@ Classifier: Topic :: Software Development :: Libraries
 Requires-Python: >=3.8
 Description-Content-Type: text/x-rst
 License-File: LICENSE.txt
+Dynamic: license-file
 
 |PyPi| |Azure| |ReadTheDocs| |Codecov| 
 

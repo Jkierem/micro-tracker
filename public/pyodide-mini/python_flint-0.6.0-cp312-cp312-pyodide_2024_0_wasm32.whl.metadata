@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: python-flint
 Version: 0.6.0
 Summary: Bindings for FLINT and Arb
@@ -8,6 +8,7 @@ Project-URL: Homepage, https://github.com/flintlib/python-flint
 Classifier: Topic :: Scientific/Engineering :: Mathematics
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Dynamic: license-file
 
 Python-FLINT
 ============

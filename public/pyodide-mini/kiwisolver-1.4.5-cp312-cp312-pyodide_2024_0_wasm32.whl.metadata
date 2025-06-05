@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: kiwisolver
 Version: 1.4.5
 Summary: A fast implementation of the Cassowary constraint solver
@@ -93,7 +93,8 @@ Classifier: Programming Language :: Python :: Implementation :: PyPy
 Requires-Python: >=3.7
 Description-Content-Type: text/x-rst
 License-File: LICENSE
-Requires-Dist: typing-extensions ; python_version < "3.8"
+Requires-Dist: typing_extensions; python_version < "3.8"
+Dynamic: license-file
 
 Welcome to Kiwi
 ===============

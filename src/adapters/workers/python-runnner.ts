@@ -2,8 +2,7 @@ import { loadPyodide } from "pyodide";
 import { JobError, PythonIncomingMessage, Ready, Result, Started } from "./messages";
 import { ImageRepo } from "../image.repository";
 import { DetectionData } from "../model-result.repository";
-import { Schema } from "@effect/schema";
-import { Option } from "effect";
+import { Option, Schema } from "effect";
 
 const readEnvFlag = (key: `VITE_SUPPRESS_PYTHON_${"WARNINGS" | "ERRORS"}`) => {
     const value = import.meta.env[key]

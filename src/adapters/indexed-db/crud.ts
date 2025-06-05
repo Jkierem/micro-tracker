@@ -1,6 +1,5 @@
-import { Data, Effect, pipe } from "effect";
+import { Data, Effect, pipe, Schema, ParseResult } from "effect";
 import { IDBKey, IndexedDBError, ObjectStore } from "./indexed-db.support";
-import { ParseResult, Schema } from "@effect/schema";
 
 export class NotFoundError 
 extends Data.TaggedError("NotFoundError")<{ id: IDBKey }>{}

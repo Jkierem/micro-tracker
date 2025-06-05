@@ -37,6 +37,77 @@ declare function setStderr(options?: {
 }): void;
 /** @deprecated Use `import type { TypedArray } from "pyodide/ffi"` instead */
 export type TypedArray = Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array | Uint8ClampedArray | Float32Array | Float64Array;
+type FSNode = {
+	timestamp: number;
+	rdev: number;
+	contents: Uint8Array;
+	mode: number;
+};
+type FSStream = {
+	tty?: {
+		ops: object;
+	};
+	seekable?: boolean;
+	stream_ops: FSStreamOps;
+	node: FSNode;
+};
+type FSStreamOps = FSStreamOpsGen<FSStream>;
+type FSStreamOpsGen<T> = {
+	open: (a: T) => void;
+	close: (a: T) => void;
+	fsync: (a: T) => void;
+	read: (a: T, b: Uint8Array, offset: number, length: number, pos: number) => number;
+	write: (a: T, b: Uint8Array, offset: number, length: number, pos: number) => number;
+};
+interface FSType {
+	unlink: (path: string) => void;
+	mkdirTree: (path: string, mode?: number) => void;
+	chdir: (path: string) => void;
+	symlink: (target: string, src: string) => FSNode;
+	createDevice: ((parent: string, name: string, input?: (() => number | null) | null, output?: ((code: number) => void) | null) => FSNode) & {
+		major: number;
+	};
+	closeStream: (fd: number) => void;
+	open: (path: string, flags: string | number, mode?: number) => FSStream;
+	makedev: (major: number, minor: number) => number;
+	mkdev: (path: string, dev: number) => FSNode;
+	filesystems: any;
+	stat: (path: string, dontFollow?: boolean) => any;
+	readdir: (path: string) => string[];
+	isDir: (mode: number) => boolean;
+	isMountpoint: (mode: FSNode) => boolean;
+	lookupPath: (path: string, options?: {
+		follow_mount?: boolean;
+	}) => {
+		node: FSNode;
+	};
+	isFile: (mode: number) => boolean;
+	writeFile: (path: string, contents: any, o?: {
+		canOwn?: boolean;
+	}) => void;
+	chmod: (path: string, mode: number) => void;
+	utime: (path: string, atime: number, mtime: number) => void;
+	rmdir: (path: string) => void;
+	mount: (type: any, opts: any, mountpoint: string) => any;
+	write: (stream: FSStream, buffer: any, offset: number, length: number, position?: number) => number;
+	close: (stream: FSStream) => void;
+	ErrnoError: {
+		new (errno: number): Error;
+	};
+	registerDevice<T>(dev: number, ops: FSStreamOpsGen<T>): void;
+	syncfs(dir: boolean, oncomplete: (val: void) => void): void;
+	findObject(a: string, dontResolveLastLink?: boolean): any;
+	readFile(a: string): Uint8Array;
+}
+type PackageType = "package" | "cpython_module" | "shared_library" | "static_library";
+interface PackageData {
+	name: string;
+	version: string;
+	fileName: string;
+	/** @experimental */
+	packageType: PackageType;
+}
+type LoadedPackages = Record<string, string>;
 /** @deprecated Use `import type { PyProxy } from "pyodide/ffi"` instead */
 interface PyProxy {
 	[x: string]: any;
@@ -104,7 +175,7 @@ declare class PyProxy {
 	 * @param options
 	 * @return The JavaScript object resulting from the conversion.
 	 */
-	toJs({ depth, pyproxies, create_pyproxies, dict_converter, default_converter, }?: {
+	toJs({ depth, pyproxies, create_pyproxies, dict_converter, default_converter, eager_converter, }?: {
 		/** How many layers deep to perform the conversion. Defaults to infinite */
 		depth?: number;
 		/**
@@ -139,6 +210,15 @@ declare class PyProxy {
 		 * documentation of :meth:`~pyodide.ffi.to_js`.
 		 */
 		default_converter?: (obj: PyProxy, convert: (obj: PyProxy) => any, cacheConversion: (obj: PyProxy, result: any) => void) => any;
+		/**
+		 * Optional callback to convert objects which gets called after ``str``,
+		 * ``int``, ``float``, ``bool``, ``None``, and ``JsProxy`` are converted but
+		 * *before* any default conversions are applied to standard data structures.
+		 *
+		 * Its arguments are the same as `dict_converter`.
+		 * See the documentation of :meth:`~pyodide.ffi.to_js`.
+		 */
+		eager_converter?: (obj: PyProxy, convert: (obj: PyProxy) => any, cacheConversion: (obj: PyProxy, result: any) => void) => any;
 	}): any;
 }
 declare class PyProxyWithLength extends PyProxy {
@@ -977,19 +1057,6 @@ declare class PyBufferView {
 	 */
 	release(): void;
 }
-type PackageType = "package" | "cpython_module" | "shared_library" | "static_library";
-interface PackageData {
-	name: string;
-	version: string;
-	fileName: string;
-	/** @experimental */
-	packageType: PackageType;
-}
-declare function loadPackage(names: string | PyProxy | Array<string>, options?: {
-	messageCallback?: (message: string) => void;
-	errorCallback?: (message: string) => void;
-	checkIntegrity?: boolean;
-}): Promise<Array<PackageData>>;
 declare class PythonError extends Error {
 	/**
 	 * The address of the error we are wrapping. We may later compare this
@@ -1013,11 +1080,13 @@ declare class PyodideAPI {
 	/** @hidden */
 	static version: string;
 	/** @hidden */
-	static loadPackage: typeof loadPackage;
+	static loadPackage: (names: string | PyProxy | Array<string>, options?: {
+		messageCallback?: (message: string) => void;
+		errorCallback?: (message: string) => void;
+		checkIntegrity?: boolean;
+	}) => Promise<Array<PackageData>>;
 	/** @hidden */
-	static loadedPackages: {
-		[key: string]: string;
-	};
+	static loadedPackages: LoadedPackages;
 	/** @hidden */
 	static ffi: {
 		PyProxy: typeof PyProxy;
@@ -1069,7 +1138,7 @@ declare class PyodideAPI {
 	 * are available as members of ``FS.filesystems``:
 	 * ``IDBFS``, ``NODEFS``, ``PROXYFS``, ``WORKERFS``.
 	 */
-	static FS: any;
+	static FS: FSType;
 	/**
 	 * An alias to the `Emscripten Path API
 	 * <https://github.com/emscripten-core/emscripten/blob/main/src/library_path.js>`_.
@@ -1079,8 +1148,9 @@ declare class PyodideAPI {
 	 */
 	static PATH: any;
 	/**
-	 * See :ref:`js-api-pyodide-canvas`.
-	 * @hidetype
+	 * APIs to set a canvas for rendering graphics.
+	 * @summaryLink :ref:`canvas <js-api-pyodide-canvas>`
+	 * @omitFromAutoModule
 	 */
 	static canvas: CanvasInterface;
 	/**
@@ -1119,7 +1189,6 @@ declare class PyodideAPI {
 	 *    (optional)
 	 * @param options.checkIntegrity If true, check the integrity of the downloaded
 	 *    packages (default: true)
-	 * @async
 	 */
 	static loadPackagesFromImports(code: string, options?: {
 		messageCallback?: (message: string) => void;
@@ -1203,7 +1272,6 @@ declare class PyodideAPI {
 	 *        traceback for any exception that is thrown will show source lines
 	 *        (unless the given file name starts with ``<`` and ends with ``>``).
 	 * @returns The result of the Python code translated to JavaScript.
-	 * @async
 	 */
 	static runPythonAsync(code: string, options?: {
 		globals?: PyProxy;
@@ -1385,7 +1453,14 @@ declare class PyodideAPI {
 	 * @returns The old value of the debug flag.
 	 */
 	static setDebug(debug: boolean): boolean;
-	static makeMemorySnapshot(): Uint8Array;
+	/**
+	 *
+	 * @param param0
+	 * @returns
+	 */
+	static makeMemorySnapshot({ serializer, }?: {
+		serializer?: (obj: any) => any;
+	}): Uint8Array;
 }
 /** @hidden */
 export type PyodideInterface = typeof PyodideAPI;
@@ -1403,8 +1478,11 @@ type ConfigType = {
 	stdout?: (msg: string) => void;
 	stderr?: (msg: string) => void;
 	jsglobals?: object;
+	_sysExecutable?: string;
 	args: string[];
-	_node_mounts: string[];
+	fsInit?: (FS: FSType, info: {
+		sitePackages: string;
+	}) => Promise<void>;
 	env: {
 		[key: string]: string;
 	};
@@ -1412,13 +1490,12 @@ type ConfigType = {
 	_makeSnapshot: boolean;
 	enableRunUntilComplete: boolean;
 	checkAPIVersion: boolean;
+	BUILD_ID: string;
 };
 /**
  * Load the main Pyodide wasm module and initialize it.
  *
  * @returns The :ref:`js-api-pyodide` module.
- * @memberof globalThis
- * @async
  * @example
  * async function main() {
  *   const pyodide = await loadPyodide({
@@ -1496,6 +1573,11 @@ export declare function loadPyodide(options?: {
 	 */
 	jsglobals?: object;
 	/**
+	 * Determine the value of ``sys.executable``.
+	 * @ignore
+	 */
+	_sysExecutable?: string;
+	/**
 	 * Command line arguments to pass to Python on startup. See `Python command
 	 * line interface options
 	 * <https://docs.python.org/3.10/using/cmdline.html#interface-options>`_ for
@@ -1530,7 +1612,8 @@ export declare function loadPyodide(options?: {
 	 */
 	pyproxyToStringRepr?: boolean;
 	/**
-	 * Make loop.run_until_complete() function correctly using stack switching
+	 * Make loop.run_until_complete() function correctly using stack switching.
+	 * Default: ``true``.
 	 */
 	enableRunUntilComplete?: boolean;
 	/**
@@ -1539,22 +1622,20 @@ export declare function loadPyodide(options?: {
 	 */
 	checkAPIVersion?: boolean;
 	/**
-	 * Used by the cli runner. If we want to detect a virtual environment from
-	 * the host file system, it needs to be visible from when `main()` is
-	 * called. The directories in this list will be mounted at the same address
-	 * into the Emscripten file system so that virtual environments work in the
-	 * cli runner.
-	 * @ignore
+	 * This is a hook that allows modification of the file system before the
+	 * main() function is called and the intereter is started. When this is
+	 * called, it is guaranteed that there is an empty site-packages directory.
+	 * @experimental
 	 */
-	_node_mounts?: string[];
-	/**
-	 * @ignore
-	 */
+	fsInit?: (FS: FSType, info: {
+		sitePackages: string;
+	}) => Promise<void>;
+	/** @ignore */
 	_makeSnapshot?: boolean;
-	/**
-	 * @ignore
-	 */
+	/** @ignore */
 	_loadSnapshot?: Uint8Array | ArrayBuffer | PromiseLike<Uint8Array | ArrayBuffer>;
+	/** @ignore */
+	_snapshotDeserializer?: (obj: any) => any;
 }): Promise<PyodideInterface>;
 
 export type {};

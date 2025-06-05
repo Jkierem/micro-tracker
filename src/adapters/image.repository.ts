@@ -2,7 +2,7 @@ import { Context, Effect, Layer } from "effect";
 import { IDBValue, CRUD, fromObjectStore, ReadAllError, ReadError } from "./indexed-db/crud";
 import { IndexedDBAdapter } from "./indexed-db/index-db.adapter";
 import { MicroTrackerV1 } from "./indexed-db/databases/micro-tracker-v1";
-import { Schema } from "@effect/schema";
+import { Schema } from "effect";
 
 export const SupportedFileTypes = [
     "image/png",

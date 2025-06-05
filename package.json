@@ -12,15 +12,14 @@
     "test:report": "yarn playwright show-report"
   },
   "resolutions": {
-    "micromatch": ">=4.0.8",
-    "rollup": ">=2.79.2"
+    "esbuild": ">=0.25.0"
   },
   "dependencies": {
-    "@effect/schema": "^0.75.5",
     "effect": "^3.10.6",
-    "pyodide": "0.26.2",
+    "pyodide": "0.27.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "rollup": ">=2.79.2",
     "styled-components": "^6.1.13",
     "utif": "^3.1.0"
   },

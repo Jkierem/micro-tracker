@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: pillow
 Version: 10.2.0
 Summary: Python Imaging Library (Fork)
@@ -32,32 +32,33 @@ Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Provides-Extra: docs
-Requires-Dist: furo ; extra == 'docs'
-Requires-Dist: olefile ; extra == 'docs'
-Requires-Dist: sphinx >=2.4 ; extra == 'docs'
-Requires-Dist: sphinx-copybutton ; extra == 'docs'
-Requires-Dist: sphinx-inline-tabs ; extra == 'docs'
-Requires-Dist: sphinx-removed-in ; extra == 'docs'
-Requires-Dist: sphinxext-opengraph ; extra == 'docs'
+Requires-Dist: furo; extra == "docs"
+Requires-Dist: olefile; extra == "docs"
+Requires-Dist: sphinx>=2.4; extra == "docs"
+Requires-Dist: sphinx-copybutton; extra == "docs"
+Requires-Dist: sphinx-inline-tabs; extra == "docs"
+Requires-Dist: sphinx-removed-in; extra == "docs"
+Requires-Dist: sphinxext-opengraph; extra == "docs"
 Provides-Extra: fpx
-Requires-Dist: olefile ; extra == 'fpx'
+Requires-Dist: olefile; extra == "fpx"
 Provides-Extra: mic
-Requires-Dist: olefile ; extra == 'mic'
+Requires-Dist: olefile; extra == "mic"
 Provides-Extra: tests
-Requires-Dist: check-manifest ; extra == 'tests'
-Requires-Dist: coverage ; extra == 'tests'
-Requires-Dist: defusedxml ; extra == 'tests'
-Requires-Dist: markdown2 ; extra == 'tests'
-Requires-Dist: olefile ; extra == 'tests'
-Requires-Dist: packaging ; extra == 'tests'
-Requires-Dist: pyroma ; extra == 'tests'
-Requires-Dist: pytest ; extra == 'tests'
-Requires-Dist: pytest-cov ; extra == 'tests'
-Requires-Dist: pytest-timeout ; extra == 'tests'
+Requires-Dist: check-manifest; extra == "tests"
+Requires-Dist: coverage; extra == "tests"
+Requires-Dist: defusedxml; extra == "tests"
+Requires-Dist: markdown2; extra == "tests"
+Requires-Dist: olefile; extra == "tests"
+Requires-Dist: packaging; extra == "tests"
+Requires-Dist: pyroma; extra == "tests"
+Requires-Dist: pytest; extra == "tests"
+Requires-Dist: pytest-cov; extra == "tests"
+Requires-Dist: pytest-timeout; extra == "tests"
 Provides-Extra: typing
-Requires-Dist: typing-extensions ; (python_version < "3.10") and extra == 'typing'
+Requires-Dist: typing-extensions; python_version < "3.10" and extra == "typing"
 Provides-Extra: xmp
-Requires-Dist: defusedxml ; extra == 'xmp'
+Requires-Dist: defusedxml; extra == "xmp"
+Dynamic: license-file
 
 <p align="center">
     <img width="248" height="250" src="https://raw.githubusercontent.com/python-pillow/pillow-logo/main/pillow-logo-248x250.png" alt="Pillow logo">

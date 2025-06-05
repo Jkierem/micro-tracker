@@ -1,8 +1,7 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Schema } from "effect";
 import { IDBValue, CRUD, fromObjectStore, IDBKeySchema, ReadError } from "./indexed-db/crud";
 import { IndexedDBAdapter } from "./indexed-db/index-db.adapter";
 import { MicroTrackerV1 } from "./indexed-db/databases/micro-tracker-v1";
-import { Schema } from "@effect/schema";
 
 export const DetectionElement = Schema.Struct({
     x: Schema.Number,

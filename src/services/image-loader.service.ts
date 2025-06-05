@@ -1,10 +1,9 @@
-import { Context, Data, Effect, Layer, Option, pipe } from "effect";
+import { Context, Data, Effect, Layer, Option, pipe, Schema } from "effect";
 import React, { useEffect, useRef, useState } from "react";
 import { FileType, ImageRepo } from "../adapters/image.repository";
 import { ProcessingError, TIFFAdapter } from "../adapters/tiff.adapter";
 import { BitmapAdapter, CanvasContextError, RenderError } from "../adapters/bitmap.adapter";
 import { FileService } from "./file.service";
-import { Schema } from "@effect/schema";
 import { HttpError } from "../adapters/http.adapter";
 import { SerializeError, VideoService } from "./video.service";
 import { NoSuchElementException } from "effect/Cause";
